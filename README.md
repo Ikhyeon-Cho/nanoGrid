@@ -5,7 +5,7 @@
 
 [![C++17](https://img.shields.io/badge/C++17-00599C?logo=cplusplus&logoColor=white)](https://github.com/Ikhyeon-Cho/nanoGrid) [![License](https://img.shields.io/badge/license-BSD--3--Clause-%2328A745)](https://github.com/Ikhyeon-Cho/nanoGrid/blob/main/LICENSE)
 
-A standalone C++17 extraction of [grid_map_core](https://github.com/ANYbotics/grid_map) (ETH/ANYbotics), with modern API additions and faster iteration. For the full API documentation, see the [original repository](https://github.com/ANYbotics/grid_map).
+A standalone C++17 extraction of [grid_map_core](https://github.com/ANYbotics/grid_map) (ETH/ANYbotics), with modern API additions and faster iteration.
 
 ---
 
@@ -83,11 +83,14 @@ if (auto val = map.value("elevation", pos)) {
 // Before: verbose iterator
 for (GridMapIterator it(map); !it.isPastEnd(); ++it) {
     const size_t i = it.getLinearIndex();
-    data(i) = ...;
+    elevation(i) = ...;
 }
 // After: range-based for (Eigen-equivalent performance)
+// Cache layer references outside the loop for optimal speed
+auto& elevation = map["elevation"];
+auto& cost = map["cost"];
 for (auto i : map.cells()) {
-    data(i) = ...;
+    cost(i) = elevation(i) / 45.0f;
 }
 ```
 
