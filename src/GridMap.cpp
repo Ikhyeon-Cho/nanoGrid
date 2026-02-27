@@ -65,7 +65,6 @@ void GridMap::setGeometry(const SubmapGeometry& geometry) {
               geometry.getPosition());
 }
 
-
 bool GridMap::hasSameLayers(const GridMap& other) const {
   return std::all_of(
       layers_.begin(), layers_.end(),
@@ -222,6 +221,78 @@ bool GridMap::getPosition(const Index& index, Position& position) const {
   return getPositionFromIndex(position, index, length_, position_, resolution_,
                               size_, startIndex_);
 }
+
+// ============================================================
+// Modern C++17 API
+// ============================================================
+
+std::optional<Index> GridMap::index(const Position& position) const {
+  Index idx;
+  if (getIndex(position, idx)) {
+    return idx;
+  }
+  return std::nullopt;
+}
+
+std::optional<Position> GridMap::position(const Index& index) const {
+  Position pos;
+  if (getPosition(index, pos)) {
+    return pos;
+  }
+  return std::nullopt;
+}
+
+std::optional<Position3> GridMap::position3(const std::string& layer,
+                                            const Index& index) const {
+  const auto value = at(layer, index);
+  if (!std::isfinite(value)) {
+    return std::nullopt;
+  }
+  Position pos2d;
+  getPosition(index, pos2d);
+  return Position3{pos2d.x(), pos2d.y(), static_cast<double>(value)};
+}
+
+std::optional<Vector3> GridMap::vector3(const std::string& layerPrefix,
+                                        const Index& index) const {
+  Vector3 vec{at(layerPrefix + "x", index), at(layerPrefix + "y", index),
+              at(layerPrefix + "z", index)};
+  if (!std::isfinite(vec[0]) || !std::isfinite(vec[1]) ||
+      !std::isfinite(vec[2])) {
+    return std::nullopt;
+  }
+  return vec;
+}
+
+std::optional<float> GridMap::value(const std::string& layer,
+                                    const Position& position) const {
+  auto idx = index(position);
+  if (!idx) {
+    return std::nullopt;
+  }
+  return value(layer, *idx);
+}
+
+std::optional<float> GridMap::value(const std::string& layer,
+                                    const Index& index) const {
+  const auto val = at(layer, index);
+  if (!std::isfinite(val)) {
+    return std::nullopt;
+  }
+  return val;
+}
+
+std::optional<GridMap> GridMap::submap(const Position& position,
+                                       const Length& length) const {
+  bool isSuccess;
+  auto result = getSubmap(position, length, isSuccess);
+  if (isSuccess) {
+    return result;
+  }
+  return std::nullopt;
+}
+
+// ============================================================
 
 bool GridMap::isInside(const Position& position) const {
   return checkIfPositionWithinMap(position, length_, position_);

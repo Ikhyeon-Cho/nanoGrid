@@ -485,4 +485,214 @@ TEST(ValueAtPosition, LinearInterpolated)
   EXPECT_NEAR(2.1963200, value, 0.0000001);
 }
 
+// ============================================================
+// Modern C++17 API Tests
+// ============================================================
+
+TEST(ModernAPI, Index) {
+  GridMap map({"layer"});
+  map.setGeometry(Length(1.0, 1.0), 0.1, Position(0.0, 0.0));
+
+  // Position inside map
+  auto idx = map.index(Position(0.0, 0.0));
+  ASSERT_TRUE(idx.has_value());
+  EXPECT_EQ(5, (*idx)(0));
+  EXPECT_EQ(5, (*idx)(1));
+
+  // Position outside map
+  auto none = map.index(Position(10.0, 10.0));
+  EXPECT_FALSE(none.has_value());
+}
+
+TEST(ModernAPI, Position) {
+  GridMap map({"layer"});
+  map.setGeometry(Length(1.0, 1.0), 0.1, Position(0.0, 0.0));
+
+  // Valid index
+  auto pos = map.position(Index(0, 0));
+  ASSERT_TRUE(pos.has_value());
+  EXPECT_NEAR(0.45, pos->x(), 1e-6);
+  EXPECT_NEAR(0.45, pos->y(), 1e-6);
+
+  // Out-of-range index
+  auto none = map.position(Index(100, 100));
+  EXPECT_FALSE(none.has_value());
+}
+
+TEST(ModernAPI, Position3) {
+  GridMap map({"height"});
+  map.setGeometry(Length(1.0, 1.0), 0.1, Position(0.0, 0.0));
+  map.at("height", Index(5, 5)) = 3.14f;
+
+  // Valid cell with finite value
+  auto pos3 = map.position3("height", Index(5, 5));
+  ASSERT_TRUE(pos3.has_value());
+  EXPECT_NEAR(3.14, pos3->z(), 1e-5);
+
+  // Cell with NaN value (default)
+  auto none = map.position3("height", Index(0, 0));
+  EXPECT_FALSE(none.has_value());
+}
+
+TEST(ModernAPI, Vector3) {
+  GridMap map({"normal_x", "normal_y", "normal_z"});
+  map.setGeometry(Length(1.0, 1.0), 0.1, Position(0.0, 0.0));
+  map.at("normal_x", Index(5, 5)) = 0.0f;
+  map.at("normal_y", Index(5, 5)) = 0.0f;
+  map.at("normal_z", Index(5, 5)) = 1.0f;
+
+  // Valid vector
+  auto vec = map.vector3("normal_", Index(5, 5));
+  ASSERT_TRUE(vec.has_value());
+  EXPECT_DOUBLE_EQ(0.0, vec->x());
+  EXPECT_DOUBLE_EQ(0.0, vec->y());
+  EXPECT_DOUBLE_EQ(1.0, vec->z());
+
+  // NaN components → nullopt
+  auto none = map.vector3("normal_", Index(0, 0));
+  EXPECT_FALSE(none.has_value());
+}
+
+TEST(ModernAPI, Submap) {
+  GridMap map({"layer"});
+  map.setGeometry(Length(5.0, 5.0), 0.1, Position(0.0, 0.0));
+  map["layer"].setConstant(1.0f);
+
+  // Valid submap
+  auto sub = map.submap(Position(0.0, 0.0), Length(2.0, 2.0));
+  ASSERT_TRUE(sub.has_value());
+  EXPECT_GE(sub->getSize()(0), 20);
+  EXPECT_GE(sub->getSize()(1), 20);
+  EXPECT_LE(sub->getSize()(0), 21);  // discretization may add 1
+  EXPECT_LE(sub->getSize()(1), 21);
+  EXPECT_TRUE(sub->exists("layer"));
+
+  // Submap completely outside → nullopt
+  auto none = map.submap(Position(100.0, 100.0), Length(1.0, 1.0));
+  EXPECT_FALSE(none.has_value());
+}
+
+TEST(ModernAPI, ConsistencyWithLegacy) {
+  GridMap map({"elevation"});
+  map.setGeometry(Length(2.0, 2.0), 0.1, Position(0.0, 0.0));
+  map.at("elevation", Index(10, 10)) = 5.0f;
+
+  // index() should match getIndex()
+  Index legacyIdx;
+  Position queryPos(0.0, 0.0);
+  bool legacySuccess = map.getIndex(queryPos, legacyIdx);
+  auto modernIdx = map.index(queryPos);
+  ASSERT_EQ(legacySuccess, modernIdx.has_value());
+  EXPECT_EQ(legacyIdx(0), (*modernIdx)(0));
+  EXPECT_EQ(legacyIdx(1), (*modernIdx)(1));
+
+  // position() should match getPosition()
+  Position legacyPos;
+  bool legacySuccess2 = map.getPosition(Index(10, 10), legacyPos);
+  auto modernPos = map.position(Index(10, 10));
+  ASSERT_EQ(legacySuccess2, modernPos.has_value());
+  EXPECT_DOUBLE_EQ(legacyPos.x(), modernPos->x());
+  EXPECT_DOUBLE_EQ(legacyPos.y(), modernPos->y());
+}
+
+TEST(ModernAPI, ValueByIndex) {
+  GridMap map({"elevation"});
+  map.setGeometry(Length(1.0, 1.0), 0.1, Position(0.0, 0.0));
+
+  // Valid cell
+  map.at("elevation", Index(5, 5)) = 3.14f;
+  auto val = map.value("elevation", Index(5, 5));
+  ASSERT_TRUE(val.has_value());
+  EXPECT_FLOAT_EQ(*val, 3.14f);
+
+  // NaN cell (default)
+  auto nanVal = map.value("elevation", Index(0, 0));
+  EXPECT_FALSE(nanVal.has_value());
+}
+
+TEST(ModernAPI, ValueByPosition) {
+  GridMap map({"elevation"});
+  map.setGeometry(Length(1.0, 1.0), 0.1, Position(0.0, 0.0));
+  map.at("elevation", Index(5, 5)) = 2.71f;
+
+  // Valid position with valid data
+  Position pos;
+  map.getPosition(Index(5, 5), pos);
+  auto val = map.value("elevation", pos);
+  ASSERT_TRUE(val.has_value());
+  EXPECT_FLOAT_EQ(*val, 2.71f);
+
+  // Position outside map
+  auto outside = map.value("elevation", Position(10.0, 10.0));
+  EXPECT_FALSE(outside.has_value());
+
+  // Position inside map but NaN cell
+  Position originPos(0.0, 0.0);
+  auto nanVal = map.value("elevation", originPos);
+  // Origin maps to center cell which is NaN by default
+  // (unless it happens to be Index(5,5))
+  if (auto idx = map.index(originPos)) {
+    if ((*idx)(0) != 5 || (*idx)(1) != 5) {
+      EXPECT_FALSE(nanVal.has_value());
+    }
+  }
+}
+
+TEST(ModernAPI, ValueConsistencyWithAt) {
+  GridMap map({"layer"});
+  map.setGeometry(Length(2.0, 2.0), 0.1, Position(0.0, 0.0));
+
+  // Set some cells to known values
+  map.at("layer", Index(3, 7)) = 42.0f;
+  map.at("layer", Index(8, 2)) = -1.5f;
+
+  // value() should return same as at() for valid cells
+  auto v1 = map.value("layer", Index(3, 7));
+  ASSERT_TRUE(v1.has_value());
+  EXPECT_FLOAT_EQ(*v1, map.at("layer", Index(3, 7)));
+
+  auto v2 = map.value("layer", Index(8, 2));
+  ASSERT_TRUE(v2.has_value());
+  EXPECT_FLOAT_EQ(*v2, map.at("layer", Index(8, 2)));
+}
+
+TEST(ModernAPI, Cells) {
+  GridMap map({"layer"});
+  map.setGeometry(Length(1.0, 1.0), 0.1, Position(0.0, 0.0));
+  auto& data = map["layer"];
+  data.setConstant(0.0f);
+
+  // Write via cells()
+  for (auto i : map.cells()) {
+    data(i) = static_cast<float>(i);
+  }
+
+  // Verify all cells were written
+  size_t count = 0;
+  for (auto i : map.cells()) {
+    EXPECT_FLOAT_EQ(data(i), static_cast<float>(i));
+    ++count;
+  }
+  EXPECT_EQ(count, static_cast<size_t>(map.getSize().prod()));
+}
+
+TEST(ModernAPI, CellsConsistencyWithDirectLoop) {
+  GridMap map({"layer"});
+  map.setGeometry(Length(2.0, 2.0), 0.1, Position(0.0, 0.0));
+  auto& data = map["layer"];
+
+  // Fill with known pattern
+  for (Eigen::Index i = 0; i < data.size(); ++i) {
+    data(i) = static_cast<float>(i) * 0.5f;
+  }
+
+  // cells() should visit same indices in same order as direct loop
+  Eigen::Index direct_i = 0;
+  for (auto i : map.cells()) {
+    EXPECT_EQ(i, static_cast<size_t>(direct_i));
+    EXPECT_FLOAT_EQ(data(i), static_cast<float>(direct_i) * 0.5f);
+    ++direct_i;
+  }
+}
+
 }  // namespace nanogrid

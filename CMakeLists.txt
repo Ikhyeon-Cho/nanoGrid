@@ -49,6 +49,15 @@ if(NANOGRID_BUILD_TESTS)
 endif()
 
 # =======================
+# Benchmarks
+# =======================
+
+option(NANOGRID_BUILD_BENCHMARKS "Build nanoGrid benchmarks" OFF)
+if(NANOGRID_BUILD_BENCHMARKS)
+  add_subdirectory(benchmarks)
+endif()
+
+# =======================
 # Install
 # =======================
 

@@ -13,6 +13,7 @@
 #include "nanogrid/TypeDefs.hpp"
 
 // STL
+#include <optional>
 #include <unordered_map>
 #include <vector>
 
@@ -212,6 +213,66 @@ class GridMap {
    * @return true if successful, false if index not within range of buffer.
    */
   bool getPosition(const Index& index, Position& position) const;
+
+  // ============================================================
+  // Modern C++17 API — value-returning alternatives
+  // ============================================================
+
+  /*!
+   * Gets the corresponding cell index for a position.
+   * @param position the requested position.
+   * @return the index if position is inside the map, std::nullopt otherwise.
+   */
+  std::optional<Index> index(const Position& position) const;
+
+  /*!
+   * Gets the 2d position of cell specified by the index.
+   * @param index the index of the requested cell.
+   * @return the position if index is within range, std::nullopt otherwise.
+   */
+  std::optional<Position> position(const Index& index) const;
+
+  /*!
+   * Gets the 3d position of a data point (x, y of cell position & cell value as z).
+   * @param layer the name of the layer to be accessed.
+   * @param index the index of the requested cell.
+   * @return the 3d position if valid data available, std::nullopt otherwise.
+   */
+  std::optional<Position3> position3(const std::string& layer, const Index& index) const;
+
+  /*!
+   * Gets the 3d vector of three layers with suffixes 'x', 'y', and 'z'.
+   * @param layerPrefix the prefix for the layer to get as vector.
+   * @param index the index of the requested cell.
+   * @return the vector if valid data available, std::nullopt otherwise.
+   */
+  std::optional<Vector3> vector3(const std::string& layerPrefix, const Index& index) const;
+
+  /*!
+   * Gets cell value at position, combining boundary check, index lookup, and validity check.
+   * @param layer the name of the layer to be accessed.
+   * @param position the requested position.
+   * @return the cell value if position is inside the map and the cell is valid, std::nullopt otherwise.
+   */
+  std::optional<float> value(const std::string& layer, const Position& position) const;
+
+  /*!
+   * Gets cell value at index with validity check.
+   * @param layer the name of the layer to be accessed.
+   * @param index the requested index.
+   * @return the cell value if finite, std::nullopt otherwise.
+   */
+  std::optional<float> value(const std::string& layer, const Index& index) const;
+
+  /*!
+   * Gets a submap from the map.
+   * @param position the requested position of the submap (usually the center).
+   * @param length the requested length of the submap.
+   * @return the submap if successful, std::nullopt otherwise.
+   */
+  std::optional<GridMap> submap(const Position& position, const Length& length) const;
+
+  // ============================================================
 
   /*!
    * Check if position is within the map boundaries.
@@ -458,6 +519,30 @@ class GridMap {
    * @return position in map.
    */
   Position getClosestPositionInMap(const Position& position) const;
+
+  /*!
+   * Returns a lightweight range of linear indices for range-based for loops.
+   * Use with cached layer references for optimal performance.
+   *
+   * Example:
+   *   auto& data = map["elevation"];
+   *   for (auto i : map.cells()) {
+   *       data(i) = 0.0f;
+   *   }
+   */
+  struct CellRange {
+    struct Iterator {
+      size_t i;
+      size_t operator*() const { return i; }
+      Iterator& operator++() { ++i; return *this; }
+      bool operator!=(const Iterator& o) const { return i != o.i; }
+    };
+    size_t size;
+    Iterator begin() const { return {0}; }
+    Iterator end() const { return {size}; }
+  };
+
+  CellRange cells() const { return {static_cast<size_t>(size_.prod())}; }
 
  private:
   /**
