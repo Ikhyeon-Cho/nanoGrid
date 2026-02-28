@@ -1,0 +1,63 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            name: Linux (GCC)
+          - os: macos-latest
+            name: macOS (AppleClang)
+          - os: windows-latest
+            name: Windows (MSVC)
+
+    name: ${{ matrix.name }}
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # --- Install Eigen3 ---
+      - name: Install Eigen3 (Linux)
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y libeigen3-dev
+
+      - name: Install Eigen3 (macOS)
+        if: runner.os == 'macOS'
+        run: brew install eigen
+
+      - name: Install Eigen3 (Windows)
+        if: runner.os == 'Windows'
+        uses: lukka/run-vcpkg@v11
+        with:
+          vcpkgGitCommitId: 66c0373dc7fca549e5803087b9487edfe3aca0a1
+          runVcpkgInstall: true
+
+      # --- Configure ---
+      - name: Configure (Unix)
+        if: runner.os != 'Windows'
+        run: cmake -B build -DNANOGRID_BUILD_TESTS=ON
+
+      - name: Configure (Windows)
+        if: runner.os == 'Windows'
+        run: >
+          cmake -B build
+          -DNANOGRID_BUILD_TESTS=ON
+          -DCMAKE_TOOLCHAIN_FILE=${{ env.VCPKG_ROOT }}/scripts/buildsystems/vcpkg.cmake
+
+      # --- Build ---
+      - name: Build
+        run: cmake --build build --config Release
+
+      # --- Test ---
+      - name: Test
+        working-directory: build
+        run: ctest --config Release --output-on-failure

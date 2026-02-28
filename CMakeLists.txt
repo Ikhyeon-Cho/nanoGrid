@@ -3,7 +3,12 @@ project(nanoGrid VERSION 0.1.0 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
-add_compile_options(-Wall -Wextra -Wpedantic)
+add_compile_options(
+  $<$<CXX_COMPILER_ID:GNU,Clang,AppleClang>:-Wall>
+  $<$<CXX_COMPILER_ID:GNU,Clang,AppleClang>:-Wextra>
+  $<$<CXX_COMPILER_ID:GNU,Clang,AppleClang>:-Wpedantic>
+  $<$<CXX_COMPILER_ID:MSVC>:/W4>
+)
 
 # =======================
 # Dependencies
