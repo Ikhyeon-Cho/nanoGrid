@@ -36,22 +36,23 @@ jobs:
 
       - name: Install Eigen3 (Windows)
         if: runner.os == 'Windows'
-        uses: lukka/run-vcpkg@v11
-        with:
-          vcpkgGitCommitId: 66c0373dc7fca549e5803087b9487edfe3aca0a1
-          runVcpkgInstall: true
+        run: vcpkg install eigen3:x64-windows
 
       # --- Configure ---
-      - name: Configure (Unix)
-        if: runner.os != 'Windows'
+      - name: Configure (Linux)
+        if: runner.os == 'Linux'
         run: cmake -B build -DNANOGRID_BUILD_TESTS=ON
+
+      - name: Configure (macOS)
+        if: runner.os == 'macOS'
+        run: cmake -B build -DNANOGRID_BUILD_TESTS=ON -DCMAKE_PREFIX_PATH=$(brew --prefix)
 
       - name: Configure (Windows)
         if: runner.os == 'Windows'
         run: >
           cmake -B build
           -DNANOGRID_BUILD_TESTS=ON
-          -DCMAKE_TOOLCHAIN_FILE=${{ env.VCPKG_ROOT }}/scripts/buildsystems/vcpkg.cmake
+          -DCMAKE_TOOLCHAIN_FILE=${{ env.VCPKG_INSTALLATION_ROOT }}/scripts/buildsystems/vcpkg.cmake
 
       # --- Build ---
       - name: Build
