@@ -13,6 +13,7 @@
 #include "nanogrid/TypeDefs.hpp"
 
 // STL
+#include <cmath>
 #include <optional>
 #include <unordered_map>
 #include <vector>
@@ -584,6 +585,187 @@ class GridMap {
     return {static_cast<Eigen::Index>(size_.prod()),
             size_(0), size_(1), startIndex_(0), startIndex_(1)};
   }
+
+  // ---------------------------------------------------------------------------
+  // Rectangular submap iteration
+  // ---------------------------------------------------------------------------
+
+  struct RectIterator {
+    int logRow, logCol;
+    int startRow, endRow, startCol, endCol;
+    int rows, cols, bufStartRow, bufStartCol;
+
+    Cell operator*() const {
+      int physRow = (logRow + bufStartRow) % rows;
+      int physCol = (logCol + bufStartCol) % cols;
+      Eigen::Index i = static_cast<Eigen::Index>(physCol) * rows + physRow;
+      return {i, logRow, logCol};
+    }
+
+    RectIterator& operator++() {
+      if (++logRow >= endRow) {
+        logRow = startRow;
+        ++logCol;
+      }
+      return *this;
+    }
+
+    bool operator!=(const RectIterator& o) const {
+      return logCol != o.logCol || logRow != o.logRow;
+    }
+  };
+
+  struct RectRange {
+    int startRow, endRow, startCol, endCol;
+    int rows, cols, bufStartRow, bufStartCol;
+
+    RectIterator begin() const {
+      if (startRow >= endRow || startCol >= endCol) return end();
+      return {startRow, startCol, startRow, endRow, startCol, endCol,
+              rows, cols, bufStartRow, bufStartCol};
+    }
+
+    RectIterator end() const {
+      return {startRow, endCol, startRow, endRow, startCol, endCol,
+              rows, cols, bufStartRow, bufStartCol};
+    }
+  };
+
+  /// Iterate cells within a rectangular world-coordinate region.
+  RectRange rect(const Position& center, const Length& size) const;
+
+  // ---------------------------------------------------------------------------
+  // Circular region iteration
+  // ---------------------------------------------------------------------------
+
+  struct CircleIterator {
+    RectIterator it, rectEnd;
+    int centerRow, centerCol;
+    double radiusSq, resolution;
+
+    Cell operator*() const { return *it; }
+
+    CircleIterator& operator++() {
+      do { ++it; } while (it != rectEnd && !isInside());
+      return *this;
+    }
+
+    bool operator!=(const CircleIterator& o) const { return it != o.it; }
+
+    bool isInside() const {
+      auto cell = *it;
+      double dr = (cell.row - centerRow) * resolution;
+      double dc = (cell.col - centerCol) * resolution;
+      return dr * dr + dc * dc <= radiusSq;
+    }
+  };
+
+  struct CircleRange {
+    RectRange rect;
+    int centerRow, centerCol;
+    double radiusSq, resolution;
+
+    CircleIterator begin() const {
+      auto b = rect.begin();
+      auto e = rect.end();
+      CircleIterator cit{b, e, centerRow, centerCol, radiusSq, resolution};
+      if (b != e && !cit.isInside()) ++cit;
+      return cit;
+    }
+
+    CircleIterator end() const {
+      auto e = rect.end();
+      return {e, e, centerRow, centerCol, radiusSq, resolution};
+    }
+  };
+
+  /// Iterate cells within a circular world-coordinate region.
+  CircleRange circle(const Position& center, double radius) const;
+
+  // ---------------------------------------------------------------------------
+  // Precomputed neighbor region
+  // ---------------------------------------------------------------------------
+
+  struct Region {
+    struct Entry { int dr, dc; };
+    std::vector<Entry> entries;
+    int minDr = 0, maxDr = 0, minDc = 0, maxDc = 0;
+  };
+
+  /// Precompute a circular neighbor region (radius in meters).
+  Region region(double radius) const;
+
+  /// Precompute a rectangular neighbor region (window size in cells).
+  Region region(const Size& window) const;
+
+  // ---------------------------------------------------------------------------
+  // Neighbor iteration using precomputed Region
+  // ---------------------------------------------------------------------------
+
+  struct NeighborIterator {
+    const Region::Entry* ptr;
+    const Region::Entry* end;
+    int centerRow, centerCol;
+    int rows, cols, bufStartRow, bufStartCol;
+    bool allValid;
+
+    Cell operator*() const {
+      int logRow = centerRow + ptr->dr;
+      int logCol = centerCol + ptr->dc;
+      int physRow = (logRow + bufStartRow) % rows;
+      int physCol = (logCol + bufStartCol) % cols;
+      Eigen::Index i = static_cast<Eigen::Index>(physCol) * rows + physRow;
+      return {i, logRow, logCol};
+    }
+
+    NeighborIterator& operator++() {
+      ++ptr;
+      if (!allValid) {
+        while (ptr != end && !isValid()) ++ptr;
+      }
+      return *this;
+    }
+
+    bool operator!=(const NeighborIterator& o) const { return ptr != o.ptr; }
+
+   private:
+    bool isValid() const {
+      int r = centerRow + ptr->dr;
+      int c = centerCol + ptr->dc;
+      return r >= 0 && r < rows && c >= 0 && c < cols;
+    }
+  };
+
+  struct NeighborRange {
+    const Region::Entry* data;
+    const Region::Entry* dataEnd;
+    int centerRow, centerCol;
+    int rows, cols, bufStartRow, bufStartCol;
+    bool allValid;
+
+    NeighborIterator begin() const {
+      NeighborIterator it{data,    dataEnd,     centerRow, centerCol,
+                          rows,    cols,        bufStartRow, bufStartCol,
+                          allValid};
+      if (!allValid && data != dataEnd && !isValid(data)) ++it;
+      return it;
+    }
+
+    NeighborIterator end() const {
+      return {dataEnd, dataEnd, centerRow, centerCol,
+              rows,    cols,    bufStartRow, bufStartCol, allValid};
+    }
+
+   private:
+    bool isValid(const Region::Entry* p) const {
+      int r = centerRow + p->dr;
+      int c = centerCol + p->dc;
+      return r >= 0 && r < rows && c >= 0 && c < cols;
+    }
+  };
+
+  /// Iterate neighbors of a cell using a precomputed Region.
+  NeighborRange neighbors(const Cell& cell, const Region& region) const;
 
  private:
   /**

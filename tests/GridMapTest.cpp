@@ -7,7 +7,6 @@
  */
 
 #include "nanogrid/GridMap.hpp"
-#include "nanogrid/MapIndexer.hpp"
 
 // gtest
 #include <gtest/gtest.h>
@@ -756,19 +755,159 @@ TEST(ModernAPI, CellsLinearAccess) {
   }
 }
 
-TEST(ModernAPI, CellsConsistencyWithMapIndexer) {
+// ============================================================
+// Spatial iteration API tests
+// ============================================================
+
+TEST(SpatialIteration, RectBasic) {
   GridMap map({"layer"});
-  map.setGeometry(Length(3.1, 4.1), 1.0, Position(0.0, 0.0));
-  map.move(Position(-1.0, -1.0));
+  map.setGeometry(Length(10.0, 10.0), 1.0, Position(0.0, 0.0));
+  map["layer"].setConstant(0.0f);
 
-  MapIndexer idx(map);
-
-  for (auto cell : map.cells()) {
-    auto [bufR, bufC] = idx(cell.row, cell.col);
-    Eigen::Index expectedIndex = static_cast<Eigen::Index>(bufC) * idx.rows + bufR;
-    EXPECT_EQ(cell.index, expectedIndex)
-        << "row=" << cell.row << " col=" << cell.col;
+  size_t count = 0;
+  for (auto cell : map.rect(Position(0.0, 0.0), Length(4.0, 4.0))) {
+    EXPECT_GE(cell.row, 0);
+    EXPECT_LT(cell.row, map.getSize()(0));
+    EXPECT_GE(cell.col, 0);
+    EXPECT_LT(cell.col, map.getSize()(1));
+    ++count;
   }
+  EXPECT_GT(count, 0u);
+  EXPECT_LE(count, static_cast<size_t>(map.getSize().prod()));
+}
+
+TEST(SpatialIteration, RectAfterMove) {
+  GridMap map({"layer"});
+  map.setGeometry(Length(10.1, 10.1), 1.0, Position(0.0, 0.0));
+  map["layer"].setConstant(1.0f);
+  map.move(Position(-3.0, -2.0));
+
+  size_t count = 0;
+  for (auto cell : map.rect(Position(-3.0, -2.0), Length(4.0, 4.0))) {
+    EXPECT_GE(cell.index, 0);
+    EXPECT_LT(cell.index, static_cast<Eigen::Index>(map.getSize().prod()));
+    map["layer"](cell.index) = 2.0f;
+    ++count;
+  }
+  EXPECT_GT(count, 0u);
+}
+
+TEST(SpatialIteration, CircleBasic) {
+  GridMap map({"layer"});
+  map.setGeometry(Length(10.0, 10.0), 0.5, Position(0.0, 0.0));
+
+  double radius = 2.0;
+  size_t count = 0;
+  for (auto cell : map.circle(Position(0.0, 0.0), radius)) {
+    // Verify cell index is valid
+    EXPECT_GE(cell.index, 0);
+    EXPECT_LT(cell.index, static_cast<Eigen::Index>(map.getSize().prod()));
+    ++count;
+  }
+  // Circle area ~= pi * 4 = 12.56 m^2, cell area = 0.25 m^2 → ~50 cells
+  EXPECT_GE(count, 30u);
+  EXPECT_LE(count, 70u);
+}
+
+TEST(SpatialIteration, CircleAfterMove) {
+  GridMap map({"layer"});
+  map.setGeometry(Length(10.1, 10.1), 1.0, Position(0.0, 0.0));
+  map["layer"].setConstant(0.0f);
+  map.move(Position(-2.0, -2.0));
+
+  size_t count = 0;
+  for (auto cell : map.circle(Position(-2.0, -2.0), 2.0)) {
+    EXPECT_GE(cell.index, 0);
+    EXPECT_LT(cell.index, static_cast<Eigen::Index>(map.getSize().prod()));
+    map["layer"](cell.index) = 1.0f;
+    ++count;
+  }
+  EXPECT_GT(count, 0u);
+}
+
+TEST(SpatialIteration, NeighborsCircle) {
+  GridMap map({"layer"});
+  map.setGeometry(Length(10.1, 10.1), 1.0, Position(0.0, 0.0));
+  map["layer"].setConstant(0.0f);
+
+  auto reg = map.region(2.0);
+
+  // Pick center cell (5, 5) — interior cell
+  GridMap::Cell center{0, 5, 5};
+  int physRow = (5 + map.getStartIndex()(0)) % map.getSize()(0);
+  int physCol = (5 + map.getStartIndex()(1)) % map.getSize()(1);
+  center.index =
+      static_cast<Eigen::Index>(physCol) * map.getSize()(0) + physRow;
+
+  double radius = 2.0;
+  size_t count = 0;
+  for (auto cell : map.neighbors(center, reg)) {
+    double dr = (cell.row - center.row) * map.getResolution();
+    double dc = (cell.col - center.col) * map.getResolution();
+    EXPECT_LE(dr * dr + dc * dc, radius * radius + 1e-9);
+    ++count;
+  }
+  EXPECT_GT(count, 0u);
+}
+
+TEST(SpatialIteration, NeighborsRect) {
+  GridMap map({"layer"});
+  map.setGeometry(Length(10.1, 10.1), 1.0, Position(0.0, 0.0));
+
+  auto reg = map.region(Size(3, 3));
+
+  // Pick center cell (5, 5) — interior cell
+  GridMap::Cell center{0, 5, 5};
+  int physRow = (5 + map.getStartIndex()(0)) % map.getSize()(0);
+  int physCol = (5 + map.getStartIndex()(1)) % map.getSize()(1);
+  center.index =
+      static_cast<Eigen::Index>(physCol) * map.getSize()(0) + physRow;
+
+  size_t count = 0;
+  for (auto cell : map.neighbors(center, reg)) {
+    EXPECT_GE(cell.row, center.row - 1);
+    EXPECT_LE(cell.row, center.row + 1);
+    EXPECT_GE(cell.col, center.col - 1);
+    EXPECT_LE(cell.col, center.col + 1);
+    ++count;
+  }
+  EXPECT_EQ(count, 9u);
+}
+
+TEST(SpatialIteration, RectOutside) {
+  GridMap map({"layer"});
+  map.setGeometry(Length(5.0, 5.0), 1.0, Position(0.0, 0.0));
+
+  size_t count = 0;
+  for (auto cell : map.rect(Position(100.0, 100.0), Length(1.0, 1.0))) {
+    ++count;
+    (void)cell;
+  }
+  EXPECT_EQ(count, 0u);
+}
+
+TEST(SpatialIteration, NeighborsAtBorder) {
+  GridMap map({"layer"});
+  map.setGeometry(Length(5.1, 5.1), 1.0, Position(0.0, 0.0));
+
+  auto reg = map.region(1.5);
+
+  // Cell at corner (0, 0)
+  GridMap::Cell corner{0, 0, 0};
+  int physRow = (0 + map.getStartIndex()(0)) % map.getSize()(0);
+  int physCol = (0 + map.getStartIndex()(1)) % map.getSize()(1);
+  corner.index =
+      static_cast<Eigen::Index>(physCol) * map.getSize()(0) + physRow;
+
+  size_t count = 0;
+  for (auto cell : map.neighbors(corner, reg)) {
+    EXPECT_GE(cell.row, 0);
+    EXPECT_GE(cell.col, 0);
+    ++count;
+  }
+  // At corner, fewer neighbors than interior
+  EXPECT_GT(count, 0u);
+  EXPECT_LT(count, reg.entries.size());
 }
 
 }  // namespace nanogrid

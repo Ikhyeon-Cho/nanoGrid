@@ -977,4 +977,144 @@ bool GridMap::atPositionBicubicInterpolated(const std::string& layer,
   return true;
 }
 
+// ============================================================
+// Spatial iteration API
+// ============================================================
+
+GridMap::RectRange GridMap::rect(const Position& center,
+                                const Length& size) const {
+  const int rows = size_(0);
+  const int cols = size_(1);
+
+  // Compute the two corners in world coordinates
+  Position topLeft(center.x() + size.x() / 2.0,
+                   center.y() + size.y() / 2.0);
+  Position bottomRight(center.x() - size.x() / 2.0,
+                       center.y() - size.y() / 2.0);
+
+  // Check if rect has any overlap with map
+  const Position mapMin = position_.array() - length_ / 2.0;
+  const Position mapMax = position_.array() + length_ / 2.0;
+  if (bottomRight.x() > mapMax.x() || topLeft.x() < mapMin.x() ||
+      bottomRight.y() > mapMax.y() || topLeft.y() < mapMin.y()) {
+    return {0, 0, 0, 0, rows, cols, startIndex_(0), startIndex_(1)};
+  }
+
+  // Clamp to map boundaries
+  boundPositionToRange(topLeft, length_, position_);
+  boundPositionToRange(bottomRight, length_, position_);
+
+  // Convert to physical buffer indices
+  Index tlPhys, brPhys;
+  if (!getIndexFromPosition(tlPhys, topLeft, length_, position_, resolution_,
+                            size_, startIndex_) ||
+      !getIndexFromPosition(brPhys, bottomRight, length_, position_,
+                            resolution_, size_, startIndex_)) {
+    return {0, 0, 0, 0, rows, cols, startIndex_(0), startIndex_(1)};
+  }
+
+  // Physical → logical
+  Index tlLog = getIndexFromBufferIndex(tlPhys, size_, startIndex_);
+  Index brLog = getIndexFromBufferIndex(brPhys, size_, startIndex_);
+
+  int startRow = std::min(tlLog(0), brLog(0));
+  int endRow = std::max(tlLog(0), brLog(0)) + 1;
+  int startCol = std::min(tlLog(1), brLog(1));
+  int endCol = std::max(tlLog(1), brLog(1)) + 1;
+
+  // Clamp to valid range
+  startRow = std::max(0, startRow);
+  endRow = std::min(rows, endRow);
+  startCol = std::max(0, startCol);
+  endCol = std::min(cols, endCol);
+
+  return {startRow, endRow, startCol, endCol, rows, cols, startIndex_(0),
+          startIndex_(1)};
+}
+
+GridMap::CircleRange GridMap::circle(const Position& center,
+                                    double radius) const {
+  // Bounding rect
+  Length boundingSize(2.0 * radius, 2.0 * radius);
+  RectRange boundingRect = rect(center, boundingSize);
+
+  // Center in logical coordinates
+  int centerRow = 0, centerCol = 0;
+  Index centerPhys;
+  if (getIndexFromPosition(centerPhys, center, length_, position_, resolution_,
+                           size_, startIndex_)) {
+    Index centerLog = getIndexFromBufferIndex(centerPhys, size_, startIndex_);
+    centerRow = centerLog(0);
+    centerCol = centerLog(1);
+  }
+
+  return {boundingRect, centerRow, centerCol, radius * radius, resolution_};
+}
+
+GridMap::Region GridMap::region(double radius) const {
+  Region reg;
+  const int rCells = static_cast<int>(std::ceil(radius / resolution_));
+  const double radiusSq = radius * radius;
+  const double res = resolution_;
+
+  reg.minDr = rCells;
+  reg.maxDr = -rCells;
+  reg.minDc = rCells;
+  reg.maxDc = -rCells;
+
+  for (int dr = -rCells; dr <= rCells; ++dr) {
+    for (int dc = -rCells; dc <= rCells; ++dc) {
+      double dsq = res * res * (dr * dr + dc * dc);
+      if (dsq <= radiusSq) {
+        reg.entries.push_back({dr, dc});
+        reg.minDr = std::min(reg.minDr, dr);
+        reg.maxDr = std::max(reg.maxDr, dr);
+        reg.minDc = std::min(reg.minDc, dc);
+        reg.maxDc = std::max(reg.maxDc, dc);
+      }
+    }
+  }
+  return reg;
+}
+
+GridMap::Region GridMap::region(const Size& window) const {
+  Region reg;
+  const int halfRow = window(0) / 2;
+  const int halfCol = window(1) / 2;
+
+  reg.minDr = -halfRow;
+  reg.maxDr = halfRow;
+  reg.minDc = -halfCol;
+  reg.maxDc = halfCol;
+
+  for (int dr = -halfRow; dr <= halfRow; ++dr) {
+    for (int dc = -halfCol; dc <= halfCol; ++dc) {
+      reg.entries.push_back({dr, dc});
+    }
+  }
+  return reg;
+}
+
+GridMap::NeighborRange GridMap::neighbors(const Cell& cell,
+                                         const Region& region) const {
+  const Region::Entry* data =
+      region.entries.empty() ? nullptr : region.entries.data();
+  const Region::Entry* dataEnd = data + region.entries.size();
+
+  bool allValid = (cell.row + region.minDr >= 0) &&
+                  (cell.row + region.maxDr < size_(0)) &&
+                  (cell.col + region.minDc >= 0) &&
+                  (cell.col + region.maxDc < size_(1));
+
+  return {data,
+          dataEnd,
+          cell.row,
+          cell.col,
+          size_(0),
+          size_(1),
+          startIndex_(0),
+          startIndex_(1),
+          allValid};
+}
+
 }  // namespace nanogrid

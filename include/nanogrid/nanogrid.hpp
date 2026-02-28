@@ -15,7 +15,6 @@
 #include "nanogrid/eigen_plugins/Functors.hpp"
 
 // nanoGrid additions
-#include "nanogrid/MapIndexer.hpp"
 #include "nanogrid/IndexHash.hpp"
 
 namespace nanogrid {
