@@ -5,27 +5,43 @@
 
 [![C++17](https://img.shields.io/badge/C++17-00599C?logo=cplusplus&logoColor=white)](https://github.com/Ikhyeon-Cho/nanoGrid) [![License](https://img.shields.io/badge/license-BSD--3--Clause-%2328A745)](https://github.com/Ikhyeon-Cho/nanoGrid/blob/main/LICENSE)
 
-A standalone C++17 extraction of [grid_map_core](https://github.com/ANYbotics/grid_map) (ETH/ANYbotics), with modern API additions and faster iteration.
+> Multi-layer grid maps for any C++ project. Eigen-only. Plain CMake.
+
+nanoGrid is a C++17 library for 2.5D multi-layer grid maps. Each layer — elevation, surface normals, traversability, or any per-cell data — is stored as a named Eigen float matrix on a fixed-resolution grid. It adds a modernized API and faster iteration on top of the original.
+
+This library is based on [grid_map](https://github.com/ANYbotics/grid_map) by Péter Fankhauser (ETH Zurich / ANYbotics). Following the original license terms, nanoGrid is distributed under the BSD-3-Clause license. It uses the `nanogrid::` namespace and coexists with ROS `grid_map` side by side.
+
+→ [Quick Start](#quick-start)
 
 ---
 
-## What's Different from grid_map
+## Why nanoGrid?
 
-- ***Standalone*** — Pure CMake. No ROS, no catkin, no ament.
-- ***Modern C++17 API*** — Cleaner alternatives to the classic out-parameter pattern ([see below](#modern-c17-api)).
-- ***Minimal*** — Just the core data structure. No ROS msgs, no RViz plugins, no OpenCV/PCL bridges.
-- ***Extra utilities*** — Additional helpers for grid iteration, cell indexing, and more.
-- ***Namespace*** — `nanogrid::` instead of `grid_map::`. Coexists with ROS grid_map, and easy to migrate.
+nanoGrid takes `grid_map`'s core and makes it standalone, modernized, and faster:
+
+- **Standalone** — Pure CMake. Add it with `FetchContent` in 3 lines.
+- **Modern API** — Idiomatic C++17 value-returning patterns.
+- **Faster map iteration** — Range-based for loop at raw Eigen speed.
+
+  <details>
+  <summary>Benchmark: 5000×5000 grid (25M cells, Release build)</summary>
+
+  | Method | Time | vs Baseline |
+  |--------|------|-------------|
+  | **Eigen** bulk operation (SIMD-optimized) | 8.2 ms | **1.0x** |
+  | **nanoGrid `map.cells()`** | **8.3 ms** | **1.0x** |
+  | **nanoGrid `map.cells()`** + grid coordinates | **22.7 ms** | **2.8x** |
+  | **grid_map** `GridMapIterator` + `getLinearIndex()` | 83.7 ms | 10.3x |
+  | **grid_map** `GridMapIterator` + `operator*()` | 192 ms | 23.5x |
+  | **grid_map** `GridMapIterator` + `map.at()` | 614 ms | 75.2x |
+
+  </details>
 
 ---
 
-## Dependencies
+## Quick Start
 
-- **Eigen3** — Linear algebra
-
----
-
-## Build
+### Build
 
 ```bash
 git clone https://github.com/Ikhyeon-Cho/nanoGrid.git
@@ -36,82 +52,18 @@ make -j$(nproc)
 sudo make install  # optional
 ```
 
----
+<details>
+<summary>To use nanoGrid in your project</summary>
+<br>
 
-## Usage
-
-### Basic (grid_map compatible)
-
-nanoGrid is fully API-compatible with grid_map — just use `nanogrid::` instead of `grid_map::`.
-
-```cpp
-#include <nanogrid/nanogrid.hpp>
-
-// Create a 10x10m grid at 0.1m resolution
-nanogrid::GridMap map;
-map.setGeometry(nanogrid::Length(10.0, 10.0), 0.1);
-map.add("elevation", 0.0f);
-
-// Access layer data
-nanogrid::Matrix& layer = map.get("elevation");
-
-// Position / index conversion
-nanogrid::Index index;
-map.getIndex(nanogrid::Position(1.0, 2.0), index);
-map.at("elevation", index) = 1.5f;
-```
-
-### Modern C++17 API
-
-nanoGrid also provides `std::optional`-based methods that replace the classic out-parameter pattern.
-
-```cpp
-// Before: out-parameter + bool check
-Index idx;
-if (map.getIndex(pos, idx)) {
-    if (map.isValid(idx, "elevation")) {
-        float val = map.at("elevation", idx);
-        // use val
-    }
-}
-// After: single call, one line
-if (auto val = map.value("elevation", pos)) {
-    // use *val
-}
-
-
-// Before: verbose iterator
-for (GridMapIterator it(map); !it.isPastEnd(); ++it) {
-    const size_t i = it.getLinearIndex();
-    elevation(i) = ...;
-}
-// After: range-based for (Eigen-equivalent performance)
-// Cache layer references outside the loop for optimal speed
-auto& elevation = map["elevation"];
-auto& cost = map["cost"];
-for (auto i : map.cells()) {
-    cost(i) = elevation(i) / 45.0f;
-}
-```
-
-| Classic (grid_map compatible) | Modern (C++17) |
-|-------------------------------|----------------|
-| `bool getIndex(pos, idx)` | `std::optional<Index> index(pos)` |
-| `bool getPosition(idx, pos)` | `std::optional<Position> position(idx)` |
-| `bool getPosition3(layer, idx, pos3)` | `std::optional<Position3> position3(layer, idx)` |
-| `bool getVector(prefix, idx, vec)` | `std::optional<Vector3> vector3(prefix, idx)` |
-| `getSubmap(pos, len, success)` | `std::optional<GridMap> submap(pos, len)` |
-| `isInside()` + `getIndex()` + `isValid()` + `at()` | `std::optional<float> value(layer, pos)` |
-| `for (GridMapIterator it(map); !it.isPastEnd(); ++it)` | `for (auto i : map.cells())` |
-
-### CMake Integration
+Link against `nanoGrid::nanoGrid`:
 
 ```cmake
 find_package(nanoGrid REQUIRED)
 target_link_libraries(your_target PUBLIC nanoGrid::nanoGrid)
 ```
 
-Or via FetchContent:
+Or fetch it directly:
 
 ```cmake
 include(FetchContent)
@@ -123,27 +75,70 @@ FetchContent_MakeAvailable(nanoGrid)
 target_link_libraries(your_target PUBLIC nanoGrid::nanoGrid)
 ```
 
----
+</details>
 
-## Performance
+### Minimal Example
 
-Iteration benchmark on a 5000×5000 grid (25M cells, Release build):
-
-| Method | Time | vs Fastest |
-|--------|------|-----------|
-| Eigen `cwiseMax()` | 8.1 ms | **1.0x** |
-| `cells()` range-based for | 8.1 ms | **1.0x** |
-| Raw linear loop | 8.3 ms | 1.0x |
-| `GridMapIterator` + `getLinearIndex()` | 69 ms | 8.6x |
-| `GridMapIterator` + `operator*()` | 181 ms | 22.5x |
-| `GridMapIterator` + `map.at()` | 572 ms | 70.9x |
+Create a 20×20 m grid at 0.1 m resolution, add an elevation layer, write cells, and read back by world position:
 
 ```cpp
-// Recommended: use cells() or Eigen operations
-auto& src = map["elevation"];
-auto& dst = map["cost"];
-for (auto i : map.cells()) {
-    dst(i) = src(i) / 45.0f;
+#include <nanogrid/nanogrid.hpp>
+using namespace nanogrid;
+
+GridMap map;
+map.setGeometry(Length(20.0, 20.0), 0.1);  // 20×20m, 0.1m resolution
+map.add("elevation");
+
+// Write — direct Eigen matrix access
+auto& elevation = map["elevation"];
+for (auto cell : map.cells()) {
+    elevation(cell) = 42.0f;
+}
+
+// Read — query by world position
+if (auto val = map.get("elevation", Position(1.0, 2.0))) {
+    // *val is 42.0f
+}
+```
+
+---
+
+## API Compatibility
+
+The full `grid_map` API is retained — just swap `grid_map::` to `nanogrid::`. On top of that, nanoGrid adds modern C++17 alternatives. See [`GridMap.hpp`](include/nanogrid/GridMap.hpp) for the full API.
+
+**Reading a cell by position:**
+
+```cpp
+// Classic: out-parameter + bool check
+Index idx;
+if (map.getIndex(pos, idx)) {
+    if (map.isValid(idx, "elevation")) {
+        float val = map.at("elevation", idx);
+    }
+}
+
+// Modern: single call
+if (auto val = map.get("elevation", pos)) {
+    // use *val
+}
+```
+
+**Iterating over all cells:**
+
+```cpp
+// Classic: verbose iterator
+for (GridMapIterator it(map); !it.isPastEnd(); ++it) {
+    const size_t i = it.getLinearIndex();
+    elevation(i) = ...;
+}
+
+// Modern: range-based for with spatial info
+for (auto cell : map.cells()) {
+    elevation(cell) = 0.0f;
+    if (cell.row == 0 || cell.col == 0) {
+        elevation(cell) = -1.0f;  // mark borders
+    }
 }
 ```
 
@@ -151,7 +146,7 @@ for (auto i : map.cells()) {
 
 ## Acknowledgments
 
-Based on [grid_map](https://github.com/ANYbotics/grid_map) by Péter Fankhauser, ETH Zurich / ANYbotics AG.
+nanoGrid would not exist without the excellent work on [grid_map](https://github.com/ANYbotics/grid_map) by Péter Fankhauser and the teams at ETH Zurich and ANYbotics AG. Their design of the multi-layer grid map data structure has been foundational for robotics research and deployment worldwide.
 
 ---
 
