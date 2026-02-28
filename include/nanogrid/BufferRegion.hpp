@@ -36,7 +36,7 @@ class BufferRegion
 
   BufferRegion();
   BufferRegion(Index startIndex, Size size, BufferRegion::Quadrant quadrant);
-  virtual ~BufferRegion() = default;
+  ~BufferRegion() = default;
 
   const Index& getStartIndex() const;
   void setStartIndex(const Index& startIndex);
@@ -55,9 +55,6 @@ class BufferRegion
 
   //! Quadrant type of the buffer region.
   Quadrant quadrant_;
-
- public:
-  EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 };
 
 } /* namespace nanogrid */

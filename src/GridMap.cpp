@@ -11,7 +11,6 @@
 #include <algorithm>
 #include <cassert>
 #include <cmath>
-#include <iostream>
 #include <stdexcept>
 
 #include "nanogrid/CubicInterpolation.hpp"
@@ -19,8 +18,6 @@
 #include "nanogrid/SubmapGeometry.hpp"
 #include "nanogrid/iterators/GridMapIterator.hpp"
 
-using std::cout;
-using std::endl;
 using std::isfinite;
 
 namespace nanogrid {
@@ -374,7 +371,6 @@ GridMap GridMap::getSubmap(const Position& position, const Length& length,
   if (!getBufferRegionsForSubmap(bufferRegions,
                                  submapInformation.getStartIndex(),
                                  submap.getSize(), size_, startIndex_)) {
-    cout << "Cannot access submap of this size." << endl;
     isSuccess = false;
     return GridMap{layers_};
   }

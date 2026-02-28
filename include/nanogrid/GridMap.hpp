@@ -633,9 +633,6 @@ class GridMap {
 
   //! Circular buffer start indices.
   Index startIndex_;
-
- public:
-  EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 };
 
 }  // namespace nanogrid

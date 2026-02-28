@@ -35,7 +35,7 @@ class SubmapGeometry
   SubmapGeometry(const GridMap& gridMap, const Position& position, const Length& length,
                  bool& isSuccess);
 
-  virtual ~SubmapGeometry() = default;
+  ~SubmapGeometry() = default;
 
   const GridMap& getGridMap() const;
   const Length& getLength() const;
@@ -65,9 +65,6 @@ class SubmapGeometry
   //! Index in the submap that corresponds to the requested
   //! position of the submap.
   Index requestedIndexInSubmap_;
-
- public:
-  EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 };
 
 } /* namespace nanogrid */

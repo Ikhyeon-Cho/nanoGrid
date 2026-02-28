@@ -96,9 +96,6 @@ public:
   //! Is iterator out of scope.
   bool isPastEnd_;
   // NOLINTEND(misc-non-private-member-variables-in-classes)
-
- public:
-  EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 };
 
 }  // namespace nanogrid
