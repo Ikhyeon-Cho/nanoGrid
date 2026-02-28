@@ -8,10 +8,8 @@
 
 #include "nanogrid/GridMapMath.hpp"
 
-// fabs
 #include <cmath>
-
-// Limits
+#include <cstring>
 #include <limits>
 
 using std::numeric_limits;
@@ -571,8 +569,8 @@ bool colorValueToVector(const unsigned long& colorValue, Eigen::Vector3f& colorV
 
 bool colorValueToVector(const float& colorValue, Eigen::Vector3f& colorVector)
 {
-  // cppcheck-suppress invalidPointerCast
-  const unsigned long tempColorValue = *reinterpret_cast<const unsigned long*>(&colorValue);
+  unsigned long tempColorValue = 0;
+  std::memcpy(&tempColorValue, &colorValue, sizeof(float));
   colorValueToVector(tempColorValue, colorVector);
   return true;
 }
@@ -585,9 +583,8 @@ bool colorVectorToValue(const Eigen::Vector3i& colorVector, unsigned long& color
 
 void colorVectorToValue(const Eigen::Vector3i& colorVector, float& colorValue)
 {
-  Color colors;
-  colors.longColor_ = (colorVector(0) << 16) + (colorVector(1) << 8) + colorVector(2);
-  colorValue = colors.floatColor_;
+  unsigned long longColor = (colorVector(0) << 16) + (colorVector(1) << 8) + colorVector(2);
+  std::memcpy(&colorValue, &longColor, sizeof(float));
 }
 
 void colorVectorToValue(const Eigen::Vector3f& colorVector, float& colorValue)

@@ -17,12 +17,6 @@
 
 namespace nanogrid {
 
-union Color
-{
-    unsigned long longColor_;
-    float floatColor_;
-};
-
 /*!
  * Gets the position of a cell specified by its index in the map frame.
  * @param[out] position the position of the center of the cell in the map frame.
