@@ -360,12 +360,12 @@ TEST(AddDataFrom, ExtendMapAligned)
   GridMap map1;
   GridMap map2;
   map1.setGeometry(Length(5.1, 5.1), 1.0, Position(0.0, 0.0)); // bufferSize(5, 5)
-  map1.add("zero", 0.0);
-  map1.add("one", 1.0);
+  map1.add("zero", 0.0f);
+  map1.add("one", 1.0f);
 
   map2.setGeometry(Length(3.1, 3.1), 1.0, Position(2.0, 2.0));
-  map2.add("one", 1.1);
-  map2.add("two", 2.0);
+  map2.add("one", 1.1f);
+  map2.add("two", 2.0f);
 
   map1.addDataFrom(map2, true, true, true);
 
@@ -390,9 +390,9 @@ TEST(AddDataFrom, ExtendMapNotAligned)
   map1.add("zero", 0.0);
 
   map2.setGeometry(Length(3.1, 3.1), 1.0, Position(3.2, 3.2));
-  map2.add("nan", 1.0);
-  map2.add("one", 1.1);
-  map2.add("two", 2.0);
+  map2.add("nan", 1.0f);
+  map2.add("one", 1.1f);
+  map2.add("two", 2.0f);
 
   std::vector<std::string> stringVector;
   stringVector.emplace_back("nan");
@@ -443,18 +443,18 @@ TEST(ValueAtPosition, NearestNeighbor)
   GridMap map( { "types" });
   map.setGeometry(Length(3.0, 3.0), 1.0, Position(0.0, 0.0));
 
-  map.at("types", Index(0,0)) = 0.5;
-  map.at("types", Index(0,1)) = 3.8;
-  map.at("types", Index(0,2)) = 2.0;
-  map.at("types", Index(1,0)) = 2.1;
-  map.at("types", Index(1,1)) = 1.0;
-  map.at("types", Index(1,2)) = 2.0;
-  map.at("types", Index(2,0)) = 1.0;
-  map.at("types", Index(2,1)) = 2.0;
-  map.at("types", Index(2,2)) = 2.0;
+  map.at("types", Index(0,0)) = 0.5f;
+  map.at("types", Index(0,1)) = 3.8f;
+  map.at("types", Index(0,2)) = 2.0f;
+  map.at("types", Index(1,0)) = 2.1f;
+  map.at("types", Index(1,1)) = 1.0f;
+  map.at("types", Index(1,2)) = 2.0f;
+  map.at("types", Index(2,0)) = 1.0f;
+  map.at("types", Index(2,1)) = 2.0f;
+  map.at("types", Index(2,2)) = 2.0f;
 
   double value = map.atPosition("types", Position(1.35,-0.4));
-  EXPECT_DOUBLE_EQ((float)3.8, value);
+  EXPECT_DOUBLE_EQ(3.8f, value);
 
   value = map.atPosition("types", Position(-0.3,0.0));
   EXPECT_DOUBLE_EQ(1.0, value);
@@ -465,15 +465,15 @@ TEST(ValueAtPosition, LinearInterpolated)
   GridMap map( { "types" });
   map.setGeometry(Length(3.0, 3.0), 1.0, Position(0.0, 0.0));
 
-  map.at("types", Index(0,0)) = 0.5;
-  map.at("types", Index(0,1)) = 3.8;
-  map.at("types", Index(0,2)) = 2.0;
-  map.at("types", Index(1,0)) = 2.1;
-  map.at("types", Index(1,1)) = 1.0;
-  map.at("types", Index(1,2)) = 2.0;
-  map.at("types", Index(2,0)) = 1.0;
-  map.at("types", Index(2,1)) = 2.0;
-  map.at("types", Index(2,2)) = 2.0;
+  map.at("types", Index(0,0)) = 0.5f;
+  map.at("types", Index(0,1)) = 3.8f;
+  map.at("types", Index(0,2)) = 2.0f;
+  map.at("types", Index(1,0)) = 2.1f;
+  map.at("types", Index(1,1)) = 1.0f;
+  map.at("types", Index(1,2)) = 2.0f;
+  map.at("types", Index(2,0)) = 1.0f;
+  map.at("types", Index(2,1)) = 2.0f;
+  map.at("types", Index(2,2)) = 2.0f;
 
   // Close to the border -> reverting to INTER_NEAREST.
   double value = map.atPosition("types", Position(-0.5,-1.2), InterpolationMethods::INTER_LINEAR);
