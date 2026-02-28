@@ -78,7 +78,7 @@ void v7_cells(GridMap& map) {
   const auto& src = map["from"];
   auto& dst = map["to"];
   for (auto cell : map.cells()) {
-    dst(cell) = dst(cell) > src(cell) ? dst(cell) : src(cell);
+    dst(cell.index) = dst(cell.index) > src(cell.index) ? dst(cell.index) : src(cell.index);
   }
 }
 
@@ -88,7 +88,7 @@ void v8_cells_rowcol(GridMap& map) {
   auto& dst = map["to"];
   int dummy = 0;
   for (auto cell : map.cells()) {
-    dst(cell) = dst(cell) > src(cell) ? dst(cell) : src(cell);
+    dst(cell.index) = dst(cell.index) > src(cell.index) ? dst(cell.index) : src(cell.index);
     dummy += cell.row;
   }
   volatile int sink = dummy;

@@ -524,16 +524,11 @@ class GridMap {
    * Lightweight cell descriptor yielded during iteration.
    * Provides the linear index (for Eigen matrix access) and
    * logical grid coordinates (buffer-independent row/col).
-   *
-   * Implicitly converts to size_t for backward compatibility:
-   *   data(cell) works via operator size_t().
    */
   struct Cell {
-    size_t linear;  ///< Column-major linear index for data(cell) access.
-    int row;        ///< Logical grid row (0..rows-1, buffer-independent).
-    int col;        ///< Logical grid column (0..cols-1, buffer-independent).
-
-    operator size_t() const { return linear; }
+    Eigen::Index index;  ///< Column-major linear index for data(cell.index) access.
+    int row;             ///< Logical grid row (0..rows-1, buffer-independent).
+    int col;             ///< Logical grid column (0..cols-1, buffer-independent).
   };
 
   /*!
@@ -548,12 +543,12 @@ class GridMap {
    * Example:
    *   auto& elevation = map["elevation"];
    *   for (auto cell : map.cells()) {
-   *       elevation(cell) = 0.0f;          // backward compat
+   *       elevation(cell.index) = 0.0f;    // linear index access
    *       if (cell.row == 0) { ... }        // spatial info
    *   }
    */
   struct CellIterator {
-    size_t i;
+    Eigen::Index i;
     int physRow, physCol;
     int rows, cols, startRow, startCol;
 
@@ -578,7 +573,7 @@ class GridMap {
   };
 
   struct CellRange {
-    size_t size;
+    Eigen::Index size;
     int rows, cols, startRow, startCol;
 
     CellIterator begin() const { return {0, 0, 0, rows, cols, startRow, startCol}; }
@@ -586,7 +581,7 @@ class GridMap {
   };
 
   CellRange cells() const {
-    return {static_cast<size_t>(size_.prod()),
+    return {static_cast<Eigen::Index>(size_.prod()),
             size_(0), size_(1), startIndex_(0), startIndex_(1)};
   }
 

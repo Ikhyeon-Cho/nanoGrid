@@ -93,7 +93,7 @@ bool GridMap::exists(const std::string& layer) const {
 const Matrix& GridMap::get(const std::string& layer) const {
   try {
     return data_.at(layer);
-  } catch (const std::out_of_range& exception) {
+  } catch (const std::out_of_range&) {
     throw std::out_of_range("GridMap::get(...) : No map layer '" + layer +
                             "' available.");
   }
@@ -102,7 +102,7 @@ const Matrix& GridMap::get(const std::string& layer) const {
 Matrix& GridMap::get(const std::string& layer) {
   try {
     return data_.at(layer);
-  } catch (const std::out_of_range& exception) {
+  } catch (const std::out_of_range&) {
     throw std::out_of_range("GridMap::get(...) : No map layer of type '" +
                             layer + "' available.");
   }
@@ -177,7 +177,7 @@ float GridMap::atPosition(const std::string& layer, const Position& position,
 float& GridMap::at(const std::string& layer, const Index& index) {
   try {
     return data_.at(layer)(index(0), index(1));
-  } catch (const std::out_of_range& exception) {
+  } catch (const std::out_of_range&) {
     throw std::out_of_range("GridMap::at(...) : No map layer '" + layer +
                             "' available.");
   }
@@ -186,7 +186,7 @@ float& GridMap::at(const std::string& layer, const Index& index) {
 float GridMap::at(const std::string& layer, const Index& index) const {
   try {
     return data_.at(layer)(index(0), index(1));
-  } catch (const std::out_of_range& exception) {
+  } catch (const std::out_of_range&) {
     throw std::out_of_range("GridMap::at(...) : No map layer '" + layer +
                             "' available.");
   }
@@ -315,11 +315,10 @@ bool GridMap::getPosition3(const std::string& layer, const Index& index,
 
 bool GridMap::getVector(const std::string& layerPrefix, const Index& index,
                         Eigen::Vector3d& vector) const {
-  Eigen::Vector3d temp{at(layerPrefix + "x", index),
-                       at(layerPrefix + "y", index),
-                       at(layerPrefix + "z", index)};
-  if (!isValid(temp[0]) || !isValid(temp[1]) ||
-      !isValid(temp[2])) {  // NOLINT (implicit-float-conversion)
+  Eigen::Vector3d temp{static_cast<double>(at(layerPrefix + "x", index)),
+                       static_cast<double>(at(layerPrefix + "y", index)),
+                       static_cast<double>(at(layerPrefix + "z", index))};
+  if (!isValid(temp[0]) || !isValid(temp[1]) || !isValid(temp[2])) {
     return false;
   } else {
     vector = temp;
@@ -834,7 +833,7 @@ Position GridMap::getClosestPositionInMap(const Position& position) const {
 void GridMap::clear(const std::string& layer) {
   try {
     data_.at(layer).setConstant(NAN);
-  } catch (const std::out_of_range& exception) {
+  } catch (const std::out_of_range&) {
     throw std::out_of_range("GridMap::clear(...) : No map layer '" + layer +
                             "' available.");
   }
@@ -929,12 +928,11 @@ bool GridMap::atPositionLinearInterpolated(const std::string& layer,
   const Position positionRed = (position - point) / resolution_;
   const Position positionRedFlip = Position(1., 1.) - positionRed;
 
-  value = f[0] * positionRedFlip.x() * positionRedFlip.y() +
-          f[1] * positionRed.x() *
-              positionRedFlip.y() +  // NOLINT (implicit-float-conversion)
+  value = static_cast<float>(
+          f[0] * positionRedFlip.x() * positionRedFlip.y() +
+          f[1] * positionRed.x() * positionRedFlip.y() +
           f[2] * positionRedFlip.x() * positionRed.y() +
-          f[3] * positionRed.x() *
-              positionRed.y();  // NOLINT (implicit-float-conversion)
+          f[3] * positionRed.x() * positionRed.y());
   return true;
 }
 

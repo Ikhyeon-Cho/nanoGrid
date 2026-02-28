@@ -360,12 +360,12 @@ TEST(AddDataFrom, ExtendMapAligned)
   GridMap map1;
   GridMap map2;
   map1.setGeometry(Length(5.1, 5.1), 1.0, Position(0.0, 0.0)); // bufferSize(5, 5)
-  map1.add("zero", 0.0);
-  map1.add("one", 1.0);
+  map1.add("zero", 0.0f);
+  map1.add("one", 1.0f);
 
   map2.setGeometry(Length(3.1, 3.1), 1.0, Position(2.0, 2.0));
-  map2.add("one", 1.1);
-  map2.add("two", 2.0);
+  map2.add("one", 1.1f);
+  map2.add("two", 2.0f);
 
   map1.addDataFrom(map2, true, true, true);
 
@@ -390,9 +390,9 @@ TEST(AddDataFrom, ExtendMapNotAligned)
   map1.add("zero", 0.0);
 
   map2.setGeometry(Length(3.1, 3.1), 1.0, Position(3.2, 3.2));
-  map2.add("nan", 1.0);
-  map2.add("one", 1.1);
-  map2.add("two", 2.0);
+  map2.add("nan", 1.0f);
+  map2.add("one", 1.1f);
+  map2.add("two", 2.0f);
 
   std::vector<std::string> stringVector;
   stringVector.emplace_back("nan");
@@ -443,18 +443,18 @@ TEST(ValueAtPosition, NearestNeighbor)
   GridMap map( { "types" });
   map.setGeometry(Length(3.0, 3.0), 1.0, Position(0.0, 0.0));
 
-  map.at("types", Index(0,0)) = 0.5;
-  map.at("types", Index(0,1)) = 3.8;
-  map.at("types", Index(0,2)) = 2.0;
-  map.at("types", Index(1,0)) = 2.1;
-  map.at("types", Index(1,1)) = 1.0;
-  map.at("types", Index(1,2)) = 2.0;
-  map.at("types", Index(2,0)) = 1.0;
-  map.at("types", Index(2,1)) = 2.0;
-  map.at("types", Index(2,2)) = 2.0;
+  map.at("types", Index(0,0)) = 0.5f;
+  map.at("types", Index(0,1)) = 3.8f;
+  map.at("types", Index(0,2)) = 2.0f;
+  map.at("types", Index(1,0)) = 2.1f;
+  map.at("types", Index(1,1)) = 1.0f;
+  map.at("types", Index(1,2)) = 2.0f;
+  map.at("types", Index(2,0)) = 1.0f;
+  map.at("types", Index(2,1)) = 2.0f;
+  map.at("types", Index(2,2)) = 2.0f;
 
   double value = map.atPosition("types", Position(1.35,-0.4));
-  EXPECT_DOUBLE_EQ((float)3.8, value);
+  EXPECT_DOUBLE_EQ(3.8f, value);
 
   value = map.atPosition("types", Position(-0.3,0.0));
   EXPECT_DOUBLE_EQ(1.0, value);
@@ -465,15 +465,15 @@ TEST(ValueAtPosition, LinearInterpolated)
   GridMap map( { "types" });
   map.setGeometry(Length(3.0, 3.0), 1.0, Position(0.0, 0.0));
 
-  map.at("types", Index(0,0)) = 0.5;
-  map.at("types", Index(0,1)) = 3.8;
-  map.at("types", Index(0,2)) = 2.0;
-  map.at("types", Index(1,0)) = 2.1;
-  map.at("types", Index(1,1)) = 1.0;
-  map.at("types", Index(1,2)) = 2.0;
-  map.at("types", Index(2,0)) = 1.0;
-  map.at("types", Index(2,1)) = 2.0;
-  map.at("types", Index(2,2)) = 2.0;
+  map.at("types", Index(0,0)) = 0.5f;
+  map.at("types", Index(0,1)) = 3.8f;
+  map.at("types", Index(0,2)) = 2.0f;
+  map.at("types", Index(1,0)) = 2.1f;
+  map.at("types", Index(1,1)) = 1.0f;
+  map.at("types", Index(1,2)) = 2.0f;
+  map.at("types", Index(2,0)) = 1.0f;
+  map.at("types", Index(2,1)) = 2.0f;
+  map.at("types", Index(2,2)) = 2.0f;
 
   // Close to the border -> reverting to INTER_NEAREST.
   double value = map.atPosition("types", Position(-0.5,-1.2), InterpolationMethods::INTER_LINEAR);
@@ -664,14 +664,14 @@ TEST(ModernAPI, Cells) {
   data.setConstant(0.0f);
 
   // Write via cells()
-  for (auto i : map.cells()) {
-    data(i) = static_cast<float>(i);
+  for (auto cell : map.cells()) {
+    data(cell.index) = static_cast<float>(cell.index);
   }
 
   // Verify all cells were written
   size_t count = 0;
-  for (auto i : map.cells()) {
-    EXPECT_FLOAT_EQ(data(i), static_cast<float>(i));
+  for (auto cell : map.cells()) {
+    EXPECT_FLOAT_EQ(data(cell.index), static_cast<float>(cell.index));
     ++count;
   }
   EXPECT_EQ(count, static_cast<size_t>(map.getSize().prod()));
@@ -689,9 +689,9 @@ TEST(ModernAPI, CellsConsistencyWithDirectLoop) {
 
   // cells() should visit same indices in same order as direct loop
   Eigen::Index direct_i = 0;
-  for (auto i : map.cells()) {
-    EXPECT_EQ(i, static_cast<size_t>(direct_i));
-    EXPECT_FLOAT_EQ(data(i), static_cast<float>(direct_i) * 0.5f);
+  for (auto cell : map.cells()) {
+    EXPECT_EQ(cell.index, direct_i);
+    EXPECT_FLOAT_EQ(data(cell.index), static_cast<float>(direct_i) * 0.5f);
     ++direct_i;
   }
 }
@@ -705,8 +705,8 @@ TEST(ModernAPI, CellsRowCol) {
   size_t count = 0;
   for (auto cell : map.cells()) {
     // Default startIndex (0,0): logical == physical
-    int expectedRow = static_cast<int>(cell.linear % rows);
-    int expectedCol = static_cast<int>(cell.linear / rows);
+    int expectedRow = static_cast<int>(cell.index % rows);
+    int expectedCol = static_cast<int>(cell.index / rows);
     EXPECT_EQ(cell.row, expectedRow);
     EXPECT_EQ(cell.col, expectedCol);
     ++count;
@@ -733,22 +733,22 @@ TEST(ModernAPI, CellsRowColAfterMove) {
     int bufCol = cell.col + startIdx(1);
     if (bufCol >= cols) bufCol -= cols;
 
-    int expectedPhysRow = static_cast<int>(cell.linear % rows);
-    int expectedPhysCol = static_cast<int>(cell.linear / rows);
+    int expectedPhysRow = static_cast<int>(cell.index % rows);
+    int expectedPhysCol = static_cast<int>(cell.index / rows);
     EXPECT_EQ(bufRow, expectedPhysRow);
     EXPECT_EQ(bufCol, expectedPhysCol);
   }
 }
 
-TEST(ModernAPI, CellsBackwardCompat) {
+TEST(ModernAPI, CellsLinearAccess) {
   GridMap map({"layer"});
   map.setGeometry(Length(1.0, 1.0), 0.1, Position(0.0, 0.0));
   auto& data = map["layer"];
   data.setConstant(0.0f);
 
-  // operator size_t() must work for data(cell)
+  // cell.index provides linear access to Eigen matrix
   for (auto cell : map.cells()) {
-    data(cell) = 1.0f;
+    data(cell.index) = 1.0f;
   }
 
   for (Eigen::Index i = 0; i < data.size(); ++i) {
@@ -765,8 +765,8 @@ TEST(ModernAPI, CellsConsistencyWithMapIndexer) {
 
   for (auto cell : map.cells()) {
     auto [bufR, bufC] = idx(cell.row, cell.col);
-    size_t expectedLinear = static_cast<size_t>(bufC) * idx.rows + bufR;
-    EXPECT_EQ(cell.linear, expectedLinear)
+    Eigen::Index expectedIndex = static_cast<Eigen::Index>(bufC) * idx.rows + bufR;
+    EXPECT_EQ(cell.index, expectedIndex)
         << "row=" << cell.row << " col=" << cell.col;
   }
 }

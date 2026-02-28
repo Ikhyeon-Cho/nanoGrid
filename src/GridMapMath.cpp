@@ -403,9 +403,9 @@ bool getBufferRegionsForSubmap(std::vector<BufferRegion>& submapBufferRegions,
       Size bottomLeftSize(submapBufferSize(0) - topLeftSize(0), bufferSize(1) - submapIndex(1));
       submapBufferRegions.emplace_back(bottomLeftIndex, bottomLeftSize, BufferRegion::Quadrant::BottomLeft);
 
-      Index bottomRightIndex = Index::Zero();
+      Index brIndex = Index::Zero();
       Size bottomRightSize(bottomLeftSize(0), topRightSize(1));
-      submapBufferRegions.emplace_back(bottomRightIndex, bottomRightSize, BufferRegion::Quadrant::BottomRight);
+      submapBufferRegions.emplace_back(brIndex, bottomRightSize, BufferRegion::Quadrant::BottomRight);
       return true;
     }
 
@@ -421,9 +421,9 @@ bool getBufferRegionsForSubmap(std::vector<BufferRegion>& submapBufferRegions,
       Size topRightSize(bufferSize(0) - submapIndex(0), submapBufferSize(1));
       submapBufferRegions.emplace_back(submapIndex, topRightSize, BufferRegion::Quadrant::TopRight);
 
-      Index bottomRightIndex(0, submapIndex(1));
+      Index brIndex(0, submapIndex(1));
       Size bottomRightSize(submapBufferSize(0) - topRightSize(0), submapBufferSize(1));
-      submapBufferRegions.emplace_back(bottomRightIndex, bottomRightSize, BufferRegion::Quadrant::BottomRight);
+      submapBufferRegions.emplace_back(brIndex, bottomRightSize, BufferRegion::Quadrant::BottomRight);
       return true;
     }
 
@@ -438,9 +438,9 @@ bool getBufferRegionsForSubmap(std::vector<BufferRegion>& submapBufferRegions,
       Size bottomLeftSize(submapBufferSize(0), bufferSize(1) - submapIndex(1));
       submapBufferRegions.emplace_back(submapIndex, bottomLeftSize, BufferRegion::Quadrant::BottomLeft);
 
-      Index bottomRightIndex(submapIndex(0), 0);
+      Index brIndex(submapIndex(0), 0);
       Size bottomRightSize(submapBufferSize(0), submapBufferSize(1) - bottomLeftSize(1));
-      submapBufferRegions.emplace_back(bottomRightIndex, bottomRightSize, BufferRegion::Quadrant::BottomRight);
+      submapBufferRegions.emplace_back(brIndex, bottomRightSize, BufferRegion::Quadrant::BottomRight);
       return true;
     }
 

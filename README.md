@@ -3,7 +3,11 @@
   <span>nanoGrid</span>
 </h1>
 
-[![C++17](https://img.shields.io/badge/C++17-00599C?logo=cplusplus&logoColor=white)](https://github.com/Ikhyeon-Cho/nanoGrid) [![License](https://img.shields.io/badge/license-BSD--3--Clause-%2328A745)](https://github.com/Ikhyeon-Cho/nanoGrid/blob/main/LICENSE)
+[![C++17](https://img.shields.io/badge/C++17-00599C?logo=cplusplus&logoColor=white)](https://github.com/Ikhyeon-Cho/nanoGrid)
+[![License](https://img.shields.io/badge/license-BSD--3--Clause-%2328A745)](https://github.com/Ikhyeon-Cho/nanoGrid/blob/main/LICENSE)
+![Linux](https://img.shields.io/badge/Linux-555555?style=flat&logo=linux&logoColor=white)
+![macOS](https://img.shields.io/badge/macOS-555555?style=flat&logo=apple&logoColor=white)
+![Windows](https://img.shields.io/badge/Windows-555555?style=flat&logo=windows&logoColor=white)
 
 > Multi-layer grid maps for any C++ project. Eigen-only. Plain CMake.
 
@@ -46,10 +50,9 @@ nanoGrid takes `grid_map`'s core and makes it standalone, modernized, and faster
 ```bash
 git clone https://github.com/Ikhyeon-Cho/nanoGrid.git
 cd nanoGrid
-mkdir build && cd build
-cmake ..
-make -j$(nproc)
-sudo make install  # optional
+cmake -B build
+cmake --build build
+cmake --install build  # optional
 ```
 
 <details>
@@ -92,7 +95,7 @@ map.add("elevation");
 // Write — direct Eigen matrix access
 auto& elevation = map["elevation"];
 for (auto cell : map.cells()) {
-    elevation(cell) = 42.0f;
+    elevation(cell.index) = 42.0f;
 }
 
 // Read — query by world position
@@ -135,9 +138,9 @@ for (GridMapIterator it(map); !it.isPastEnd(); ++it) {
 
 // Modern: range-based for with spatial info
 for (auto cell : map.cells()) {
-    elevation(cell) = 0.0f;
+    elevation(cell.index) = 0.0f;
     if (cell.row == 0 || cell.col == 0) {
-        elevation(cell) = -1.0f;  // mark borders
+        elevation(cell.index) = -1.0f;  // mark borders
     }
 }
 ```

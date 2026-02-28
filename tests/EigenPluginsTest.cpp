@@ -106,7 +106,7 @@ TEST(EigenMatrixBaseAddons, clamp)
   Eigen::Matrix3f matrix;
   matrix << vector.segment(0, 3), vector.segment(3, 3), vector.segment(6, 3);
   matrix(1, 1) = NAN;
-  matrix = matrix.unaryExpr(nanogrid::Clamp<float>(2.1, 7.0));
+  matrix = matrix.unaryExpr(nanogrid::Clamp<float>(2.1f, 7.0f));
   EXPECT_NEAR(2.1, matrix(0, 0), 1e-7);
   EXPECT_NEAR(2.1, matrix(1, 0), 1e-7);
   EXPECT_NEAR(3.0, matrix(2, 0), 1e-7);
