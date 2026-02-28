@@ -77,9 +77,22 @@ void v6_raw_linear(GridMap& map) {
 void v7_cells(GridMap& map) {
   const auto& src = map["from"];
   auto& dst = map["to"];
-  for (auto i : map.cells()) {
-    dst(i) = dst(i) > src(i) ? dst(i) : src(i);
+  for (auto cell : map.cells()) {
+    dst(cell) = dst(cell) > src(cell) ? dst(cell) : src(cell);
   }
+}
+
+// V8: cells() with row/col access
+void v8_cells_rowcol(GridMap& map) {
+  const auto& src = map["from"];
+  auto& dst = map["to"];
+  int dummy = 0;
+  for (auto cell : map.cells()) {
+    dst(cell) = dst(cell) > src(cell) ? dst(cell) : src(cell);
+    dummy += cell.row;
+  }
+  volatile int sink = dummy;
+  (void)sink;
 }
 
 struct BenchResult {
@@ -129,6 +142,7 @@ int main() {
   results.push_back({"V5: Raw 2D loop",               bench(map, v5_raw_2d)});
   results.push_back({"V6: Raw linear loop",           bench(map, v6_raw_linear)});
   results.push_back({"V7: cells() range-based for",   bench(map, v7_cells)});
+  results.push_back({"V8: cells() + row/col access",  bench(map, v8_cells_rowcol)});
 
   double fastest = results[0].ms;
   for (auto& r : results) fastest = std::min(fastest, r.ms);
