@@ -49,10 +49,8 @@ jobs:
 
       - name: Configure (Windows)
         if: runner.os == 'Windows'
-        run: >
-          cmake -B build
-          -DNANOGRID_BUILD_TESTS=ON
-          -DCMAKE_TOOLCHAIN_FILE=${{ env.VCPKG_INSTALLATION_ROOT }}/scripts/buildsystems/vcpkg.cmake
+        shell: bash
+        run: cmake -B build -DNANOGRID_BUILD_TESTS=ON -DCMAKE_TOOLCHAIN_FILE="$VCPKG_INSTALLATION_ROOT/scripts/buildsystems/vcpkg.cmake"
 
       # --- Build ---
       - name: Build

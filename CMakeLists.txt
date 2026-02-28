@@ -14,7 +14,7 @@ add_compile_options(
 # Dependencies
 # =======================
 
-find_package(Eigen3 3.3 REQUIRED NO_MODULE)
+find_package(Eigen3 REQUIRED NO_MODULE)
 
 # =======================
 # Library
