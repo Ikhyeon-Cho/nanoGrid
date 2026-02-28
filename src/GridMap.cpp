@@ -244,17 +244,17 @@ std::optional<Vector3> GridMap::vector3(const std::string& layerPrefix,
   return vec;
 }
 
-std::optional<float> GridMap::value(const std::string& layer,
-                                    const Position& position) const {
+std::optional<float> GridMap::get(const std::string& layer,
+                                  const Position& position) const {
   auto idx = index(position);
   if (!idx) {
     return std::nullopt;
   }
-  return value(layer, *idx);
+  return get(layer, *idx);
 }
 
-std::optional<float> GridMap::value(const std::string& layer,
-                                    const Index& index) const {
+std::optional<float> GridMap::get(const std::string& layer,
+                                  const Index& index) const {
   const auto val = at(layer, index);
   if (!std::isfinite(val)) {
     return std::nullopt;

@@ -254,7 +254,7 @@ class GridMap {
    * @param position the requested position.
    * @return the cell value if position is inside the map and the cell is valid, std::nullopt otherwise.
    */
-  [[nodiscard]] std::optional<float> value(const std::string& layer, const Position& position) const;
+  [[nodiscard]] std::optional<float> get(const std::string& layer, const Position& position) const;
 
   /*!
    * Gets cell value at index with validity check.
@@ -262,7 +262,7 @@ class GridMap {
    * @param index the requested index.
    * @return the cell value if finite, std::nullopt otherwise.
    */
-  [[nodiscard]] std::optional<float> value(const std::string& layer, const Index& index) const;
+  [[nodiscard]] std::optional<float> get(const std::string& layer, const Index& index) const;
 
   /*!
    * Gets a submap from the map.
@@ -521,28 +521,74 @@ class GridMap {
   Position getClosestPositionInMap(const Position& position) const;
 
   /*!
-   * Returns a lightweight range of linear indices for range-based for loops.
-   * Use with cached layer references for optimal performance.
+   * Lightweight cell descriptor yielded during iteration.
+   * Provides the linear index (for Eigen matrix access) and
+   * logical grid coordinates (buffer-independent row/col).
    *
-   * Example:
-   *   auto& data = map["elevation"];
-   *   for (auto i : map.cells()) {
-   *       data(i) = 0.0f;
-   *   }
+   * Implicitly converts to size_t for backward compatibility:
+   *   data(cell) works via operator size_t().
    */
-  struct CellRange {
-    struct Iterator {
-      size_t i;
-      size_t operator*() const { return i; }
-      Iterator& operator++() { ++i; return *this; }
-      bool operator!=(const Iterator& o) const { return i != o.i; }
-    };
-    size_t size;
-    Iterator begin() const { return {0}; }
-    Iterator end() const { return {size}; }
+  struct Cell {
+    size_t linear;  ///< Column-major linear index for data(cell) access.
+    int row;        ///< Logical grid row (0..rows-1, buffer-independent).
+    int col;        ///< Logical grid column (0..cols-1, buffer-independent).
+
+    operator size_t() const { return linear; }
   };
 
-  CellRange cells() const { return {static_cast<size_t>(size_.prod())}; }
+  /*!
+   * Returns a lightweight range for iterating all cells in physical
+   * (column-major) order. Each element is a Cell providing both the
+   * linear index and logical (row, col) coordinates.
+   *
+   * Iteration order is column-major (Eigen storage order) for
+   * cache-friendly access. Logical coordinates account for the
+   * circular buffer offset.
+   *
+   * Example:
+   *   auto& elevation = map["elevation"];
+   *   for (auto cell : map.cells()) {
+   *       elevation(cell) = 0.0f;          // backward compat
+   *       if (cell.row == 0) { ... }        // spatial info
+   *   }
+   */
+  struct CellIterator {
+    size_t i;
+    int physRow, physCol;
+    int rows, cols, startRow, startCol;
+
+    Cell operator*() const {
+      int logRow = physRow - startRow;
+      if (logRow < 0) logRow += rows;
+      int logCol = physCol - startCol;
+      if (logCol < 0) logCol += cols;
+      return {i, logRow, logCol};
+    }
+
+    CellIterator& operator++() {
+      ++i;
+      if (++physRow >= rows) {
+        physRow = 0;
+        ++physCol;
+      }
+      return *this;
+    }
+
+    bool operator!=(const CellIterator& o) const { return i != o.i; }
+  };
+
+  struct CellRange {
+    size_t size;
+    int rows, cols, startRow, startCol;
+
+    CellIterator begin() const { return {0, 0, 0, rows, cols, startRow, startCol}; }
+    CellIterator end() const { return {size, 0, 0, rows, cols, startRow, startCol}; }
+  };
+
+  CellRange cells() const {
+    return {static_cast<size_t>(size_.prod()),
+            size_(0), size_(1), startIndex_(0), startIndex_(1)};
+  }
 
  private:
   /**

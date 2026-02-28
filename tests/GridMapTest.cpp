@@ -7,6 +7,7 @@
  */
 
 #include "nanogrid/GridMap.hpp"
+#include "nanogrid/MapIndexer.hpp"
 
 // gtest
 #include <gtest/gtest.h>
@@ -595,22 +596,22 @@ TEST(ModernAPI, ConsistencyWithLegacy) {
   EXPECT_DOUBLE_EQ(legacyPos.y(), modernPos->y());
 }
 
-TEST(ModernAPI, ValueByIndex) {
+TEST(ModernAPI, GetByIndex) {
   GridMap map({"elevation"});
   map.setGeometry(Length(1.0, 1.0), 0.1, Position(0.0, 0.0));
 
   // Valid cell
   map.at("elevation", Index(5, 5)) = 3.14f;
-  auto val = map.value("elevation", Index(5, 5));
+  auto val = map.get("elevation", Index(5, 5));
   ASSERT_TRUE(val.has_value());
   EXPECT_FLOAT_EQ(*val, 3.14f);
 
   // NaN cell (default)
-  auto nanVal = map.value("elevation", Index(0, 0));
+  auto nanVal = map.get("elevation", Index(0, 0));
   EXPECT_FALSE(nanVal.has_value());
 }
 
-TEST(ModernAPI, ValueByPosition) {
+TEST(ModernAPI, GetByPosition) {
   GridMap map({"elevation"});
   map.setGeometry(Length(1.0, 1.0), 0.1, Position(0.0, 0.0));
   map.at("elevation", Index(5, 5)) = 2.71f;
@@ -618,17 +619,17 @@ TEST(ModernAPI, ValueByPosition) {
   // Valid position with valid data
   Position pos;
   map.getPosition(Index(5, 5), pos);
-  auto val = map.value("elevation", pos);
+  auto val = map.get("elevation", pos);
   ASSERT_TRUE(val.has_value());
   EXPECT_FLOAT_EQ(*val, 2.71f);
 
   // Position outside map
-  auto outside = map.value("elevation", Position(10.0, 10.0));
+  auto outside = map.get("elevation", Position(10.0, 10.0));
   EXPECT_FALSE(outside.has_value());
 
   // Position inside map but NaN cell
   Position originPos(0.0, 0.0);
-  auto nanVal = map.value("elevation", originPos);
+  auto nanVal = map.get("elevation", originPos);
   // Origin maps to center cell which is NaN by default
   // (unless it happens to be Index(5,5))
   if (auto idx = map.index(originPos)) {
@@ -638,7 +639,7 @@ TEST(ModernAPI, ValueByPosition) {
   }
 }
 
-TEST(ModernAPI, ValueConsistencyWithAt) {
+TEST(ModernAPI, GetConsistencyWithAt) {
   GridMap map({"layer"});
   map.setGeometry(Length(2.0, 2.0), 0.1, Position(0.0, 0.0));
 
@@ -646,12 +647,12 @@ TEST(ModernAPI, ValueConsistencyWithAt) {
   map.at("layer", Index(3, 7)) = 42.0f;
   map.at("layer", Index(8, 2)) = -1.5f;
 
-  // value() should return same as at() for valid cells
-  auto v1 = map.value("layer", Index(3, 7));
+  // get() should return same as at() for valid cells
+  auto v1 = map.get("layer", Index(3, 7));
   ASSERT_TRUE(v1.has_value());
   EXPECT_FLOAT_EQ(*v1, map.at("layer", Index(3, 7)));
 
-  auto v2 = map.value("layer", Index(8, 2));
+  auto v2 = map.get("layer", Index(8, 2));
   ASSERT_TRUE(v2.has_value());
   EXPECT_FLOAT_EQ(*v2, map.at("layer", Index(8, 2)));
 }
@@ -692,6 +693,81 @@ TEST(ModernAPI, CellsConsistencyWithDirectLoop) {
     EXPECT_EQ(i, static_cast<size_t>(direct_i));
     EXPECT_FLOAT_EQ(data(i), static_cast<float>(direct_i) * 0.5f);
     ++direct_i;
+  }
+}
+
+TEST(ModernAPI, CellsRowCol) {
+  GridMap map({"layer"});
+  map.setGeometry(Length(1.0, 2.0), 0.5, Position(0.0, 0.0));
+  // Size: 2 rows x 4 cols
+
+  const int rows = map.getSize()(0);
+  size_t count = 0;
+  for (auto cell : map.cells()) {
+    // Default startIndex (0,0): logical == physical
+    int expectedRow = static_cast<int>(cell.linear % rows);
+    int expectedCol = static_cast<int>(cell.linear / rows);
+    EXPECT_EQ(cell.row, expectedRow);
+    EXPECT_EQ(cell.col, expectedCol);
+    ++count;
+  }
+  EXPECT_EQ(count, static_cast<size_t>(map.getSize().prod()));
+}
+
+TEST(ModernAPI, CellsRowColAfterMove) {
+  GridMap map({"layer"});
+  map.setGeometry(Length(5.1, 5.1), 1.0, Position(0.0, 0.0));
+  map["layer"].setConstant(0.0f);
+  map.move(Position(-2.0, -1.0));
+
+  const auto startIdx = map.getStartIndex();
+  EXPECT_TRUE((startIdx != 0).any());  // Circular buffer active
+
+  const int rows = map.getSize()(0);
+  const int cols = map.getSize()(1);
+
+  for (auto cell : map.cells()) {
+    // Forward transform: logical -> physical (same as MapIndexer)
+    int bufRow = cell.row + startIdx(0);
+    if (bufRow >= rows) bufRow -= rows;
+    int bufCol = cell.col + startIdx(1);
+    if (bufCol >= cols) bufCol -= cols;
+
+    int expectedPhysRow = static_cast<int>(cell.linear % rows);
+    int expectedPhysCol = static_cast<int>(cell.linear / rows);
+    EXPECT_EQ(bufRow, expectedPhysRow);
+    EXPECT_EQ(bufCol, expectedPhysCol);
+  }
+}
+
+TEST(ModernAPI, CellsBackwardCompat) {
+  GridMap map({"layer"});
+  map.setGeometry(Length(1.0, 1.0), 0.1, Position(0.0, 0.0));
+  auto& data = map["layer"];
+  data.setConstant(0.0f);
+
+  // operator size_t() must work for data(cell)
+  for (auto cell : map.cells()) {
+    data(cell) = 1.0f;
+  }
+
+  for (Eigen::Index i = 0; i < data.size(); ++i) {
+    EXPECT_FLOAT_EQ(data(i), 1.0f);
+  }
+}
+
+TEST(ModernAPI, CellsConsistencyWithMapIndexer) {
+  GridMap map({"layer"});
+  map.setGeometry(Length(3.1, 4.1), 1.0, Position(0.0, 0.0));
+  map.move(Position(-1.0, -1.0));
+
+  MapIndexer idx(map);
+
+  for (auto cell : map.cells()) {
+    auto [bufR, bufC] = idx(cell.row, cell.col);
+    size_t expectedLinear = static_cast<size_t>(bufC) * idx.rows + bufR;
+    EXPECT_EQ(cell.linear, expectedLinear)
+        << "row=" << cell.row << " col=" << cell.col;
   }
 }
 
