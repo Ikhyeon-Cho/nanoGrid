@@ -101,7 +101,7 @@ class GridMap {
    * @param layer the name of the layer.
    * @return true if layer exists, false otherwise.
    */
-  bool exists(const std::string& layer) const;
+  [[nodiscard]] bool exists(const std::string& layer) const;
 
   /*!
    * Returns the grid map data for a layer as matrix.
@@ -142,7 +142,7 @@ class GridMap {
    * @param layer the name of the layer to be removed.
    * @return true if successful.
    */
-  bool erase(const std::string& layer);
+  [[nodiscard]] bool erase(const std::string& layer);
 
   /*!
    * Gets the names of the layers.
@@ -157,7 +157,7 @@ class GridMap {
    * @param other the other grid map.
    * @return true if the other grid map has the same layers, false otherwise.
    */
-  bool hasSameLayers(const nanogrid::GridMap& other) const;
+  [[nodiscard]] bool hasSameLayers(const nanogrid::GridMap& other) const;
 
   /*!
    * Get cell data at requested position.
@@ -223,14 +223,14 @@ class GridMap {
    * @param position the requested position.
    * @return the index if position is inside the map, std::nullopt otherwise.
    */
-  std::optional<Index> index(const Position& position) const;
+  [[nodiscard]] std::optional<Index> index(const Position& position) const;
 
   /*!
    * Gets the 2d position of cell specified by the index.
    * @param index the index of the requested cell.
    * @return the position if index is within range, std::nullopt otherwise.
    */
-  std::optional<Position> position(const Index& index) const;
+  [[nodiscard]] std::optional<Position> position(const Index& index) const;
 
   /*!
    * Gets the 3d position of a data point (x, y of cell position & cell value as z).
@@ -238,7 +238,7 @@ class GridMap {
    * @param index the index of the requested cell.
    * @return the 3d position if valid data available, std::nullopt otherwise.
    */
-  std::optional<Position3> position3(const std::string& layer, const Index& index) const;
+  [[nodiscard]] std::optional<Position3> position3(const std::string& layer, const Index& index) const;
 
   /*!
    * Gets the 3d vector of three layers with suffixes 'x', 'y', and 'z'.
@@ -246,7 +246,7 @@ class GridMap {
    * @param index the index of the requested cell.
    * @return the vector if valid data available, std::nullopt otherwise.
    */
-  std::optional<Vector3> vector3(const std::string& layerPrefix, const Index& index) const;
+  [[nodiscard]] std::optional<Vector3> vector3(const std::string& layerPrefix, const Index& index) const;
 
   /*!
    * Gets cell value at position, combining boundary check, index lookup, and validity check.
@@ -254,7 +254,7 @@ class GridMap {
    * @param position the requested position.
    * @return the cell value if position is inside the map and the cell is valid, std::nullopt otherwise.
    */
-  std::optional<float> value(const std::string& layer, const Position& position) const;
+  [[nodiscard]] std::optional<float> value(const std::string& layer, const Position& position) const;
 
   /*!
    * Gets cell value at index with validity check.
@@ -262,7 +262,7 @@ class GridMap {
    * @param index the requested index.
    * @return the cell value if finite, std::nullopt otherwise.
    */
-  std::optional<float> value(const std::string& layer, const Index& index) const;
+  [[nodiscard]] std::optional<float> value(const std::string& layer, const Index& index) const;
 
   /*!
    * Gets a submap from the map.
@@ -270,7 +270,7 @@ class GridMap {
    * @param length the requested length of the submap.
    * @return the submap if successful, std::nullopt otherwise.
    */
-  std::optional<GridMap> submap(const Position& position, const Length& length) const;
+  [[nodiscard]] std::optional<GridMap> submap(const Position& position, const Length& length) const;
 
   // ============================================================
 
@@ -279,14 +279,14 @@ class GridMap {
    * @param position the position to be checked.
    * @return true if position is within map, false otherwise.
    */
-  bool isInside(const Position& position) const;
+  [[nodiscard]] bool isInside(const Position& position) const;
 
   /*!
    * Checks if any layer has a valid (finite) value at the given index.
    * @param index the index to check.
    * @return true if any layer has finite data at this cell, false otherwise.
    */
-  bool isValid(const Index& index) const;
+  [[nodiscard]] bool isValid(const Index& index) const;
 
   /*!
    * Checks if cell at index is a valid (finite) for a certain layer.
@@ -294,7 +294,7 @@ class GridMap {
    * @param layer the name of the layer to be checked for validity.
    * @return true if cell is valid, false otherwise.
    */
-  bool isValid(const Index& index, const std::string& layer) const;
+  [[nodiscard]] bool isValid(const Index& index, const std::string& layer) const;
 
   /*!
    * Checks if cell at index is a valid (finite) for certain layers.
@@ -302,7 +302,7 @@ class GridMap {
    * @param layers the layers to be checked for validity.
    * @return true if cell is valid, false otherwise.
    */
-  bool isValid(const Index& index, const std::vector<std::string>& layers) const;
+  [[nodiscard]] bool isValid(const Index& index, const std::vector<std::string>& layers) const;
 
   /*!
    * Gets the 3d position of a data point (x, y of cell position & cell value as z) in
@@ -505,7 +505,7 @@ class GridMap {
    * Checks if the buffer is at start index (0,0).
    * @return true if buffer is at default start index.
    */
-  bool isDefaultStartIndex() const;
+  [[nodiscard]] bool isDefaultStartIndex() const;
 
   /*!
    * Rearranges data such that the buffer start index is at (0,0).

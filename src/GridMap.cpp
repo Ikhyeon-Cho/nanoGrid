@@ -32,7 +32,7 @@ GridMap::GridMap(const std::vector<std::string>& layers) {
   layers_ = layers;
 
   for (auto& layer : layers_) {
-    data_.insert(std::pair<std::string, Matrix>(layer, Matrix()));
+    data_.try_emplace(layer);
   }
 }
 
@@ -81,13 +81,13 @@ void GridMap::add(const std::string& layer, const Matrix& data) {
     data_.at(layer) = data;
   } else {
     // Type does not exist yet, add type and data.
-    data_.insert(std::pair<std::string, Matrix>(layer, data));
+    data_.try_emplace(layer, data);
     layers_.push_back(layer);
   }
 }
 
 bool GridMap::exists(const std::string& layer) const {
-  return !(data_.find(layer) == data_.end());
+  return data_.count(layer) > 0;
 }
 
 const Matrix& GridMap::get(const std::string& layer) const {
@@ -741,7 +741,7 @@ void GridMap::setTimestamp(const Time timestamp) { timestamp_ = timestamp; }
 
 Time GridMap::getTimestamp() const { return timestamp_; }
 
-void GridMap::resetTimestamp() { timestamp_ = 0.0; }
+void GridMap::resetTimestamp() { timestamp_ = 0; }
 
 void GridMap::setFrameId(const std::string& frameId) { frameId_ = frameId; }
 
