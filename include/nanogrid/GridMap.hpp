@@ -640,7 +640,7 @@ class GridMap {
 
   struct CircleIterator {
     RectIterator it, rectEnd;
-    int centerRow, centerCol;
+    double centerRow, centerCol;
     double radiusSq, resolution;
 
     Cell operator*() const { return *it; }
@@ -662,7 +662,7 @@ class GridMap {
 
   struct CircleRange {
     RectRange rect;
-    int centerRow, centerCol;
+    double centerRow, centerCol;
     double radiusSq, resolution;
 
     CircleIterator begin() const {
@@ -686,8 +686,13 @@ class GridMap {
   // Precomputed neighbor region
   // ---------------------------------------------------------------------------
 
+  /// Neighbor descriptor: Cell + squared distance to center.
+  struct Neighbor : Cell {
+    float dist_sq;  ///< Squared distance in meters from the center cell.
+  };
+
   struct Region {
-    struct Entry { int dr, dc; };
+    struct Entry { int dr, dc; float dist_sq; };
     std::vector<Entry> entries;
     int minDr = 0, maxDr = 0, minDc = 0, maxDc = 0;
   };
@@ -709,13 +714,13 @@ class GridMap {
     int rows, cols, bufStartRow, bufStartCol;
     bool allValid;
 
-    Cell operator*() const {
+    Neighbor operator*() const {
       int logRow = centerRow + ptr->dr;
       int logCol = centerCol + ptr->dc;
       int physRow = (logRow + bufStartRow) % rows;
       int physCol = (logCol + bufStartCol) % cols;
       Eigen::Index i = static_cast<Eigen::Index>(physCol) * rows + physRow;
-      return {i, logRow, logCol};
+      return {{i, logRow, logCol}, ptr->dist_sq};
     }
 
     NeighborIterator& operator++() {

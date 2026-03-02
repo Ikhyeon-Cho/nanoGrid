@@ -1038,15 +1038,11 @@ GridMap::CircleRange GridMap::circle(const Position& center,
   Length boundingSize(2.0 * radius, 2.0 * radius);
   RectRange boundingRect = rect(center, boundingSize);
 
-  // Center in logical coordinates
-  int centerRow = 0, centerCol = 0;
-  Index centerPhys;
-  if (getIndexFromPosition(centerPhys, center, length_, position_, resolution_,
-                           size_, startIndex_)) {
-    Index centerLog = getIndexFromBufferIndex(centerPhys, size_, startIndex_);
-    centerRow = centerLog(0);
-    centerCol = centerLog(1);
-  }
+  // Center in continuous logical coordinates (works even when center is outside the map)
+  double originX = position_.x() + 0.5 * length_.x();
+  double originY = position_.y() + 0.5 * length_.y();
+  double centerRow = (originX - center.x()) / resolution_ - 0.5;
+  double centerCol = (originY - center.y()) / resolution_ - 0.5;
 
   return {boundingRect, centerRow, centerCol, radius * radius, resolution_};
 }
@@ -1066,7 +1062,7 @@ GridMap::Region GridMap::region(double radius) const {
     for (int dc = -rCells; dc <= rCells; ++dc) {
       double dsq = res * res * (dr * dr + dc * dc);
       if (dsq <= radiusSq) {
-        reg.entries.push_back({dr, dc});
+        reg.entries.push_back({dr, dc, static_cast<float>(dsq)});
         reg.minDr = std::min(reg.minDr, dr);
         reg.maxDr = std::max(reg.maxDr, dr);
         reg.minDc = std::min(reg.minDc, dc);
@@ -1087,9 +1083,11 @@ GridMap::Region GridMap::region(const Size& window) const {
   reg.minDc = -halfCol;
   reg.maxDc = halfCol;
 
+  const float res = static_cast<float>(resolution_);
   for (int dr = -halfRow; dr <= halfRow; ++dr) {
     for (int dc = -halfCol; dc <= halfCol; ++dc) {
-      reg.entries.push_back({dr, dc});
+      float dsq = res * res * static_cast<float>(dr * dr + dc * dc);
+      reg.entries.push_back({dr, dc, dsq});
     }
   }
   return reg;

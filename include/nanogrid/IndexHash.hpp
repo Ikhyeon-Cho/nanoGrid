@@ -5,7 +5,6 @@
 
 #include <cstdint>
 #include <functional>
-#include <unordered_map>
 
 #include "nanogrid/TypeDefs.hpp"
 
@@ -27,9 +26,5 @@ struct IndexEqual {
     return a(0) == b(0) && a(1) == b(1);
   }
 };
-
-/// Convenience alias for a cell-indexed unordered map.
-template <typename T>
-using CellMap = std::unordered_map<Index, T, IndexHash, IndexEqual>;
 
 }  // namespace nanogrid

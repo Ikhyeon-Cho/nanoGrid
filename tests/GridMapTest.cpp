@@ -910,4 +910,77 @@ TEST(SpatialIteration, NeighborsAtBorder) {
   EXPECT_LT(count, reg.entries.size());
 }
 
+// Helper: get world position from Cell using its linear index (column-major)
+static std::optional<Position> positionFromCell(const GridMap& map,
+                                                const GridMap::Cell& cell) {
+  int rows = map.getSize()(0);
+  int physRow = static_cast<int>(cell.index % rows);
+  int physCol = static_cast<int>(cell.index / rows);
+  return map.position(Index(physRow, physCol));
+}
+
+TEST(SpatialIteration, CircleOffMapCenter) {
+  GridMap map({"layer"});
+  map.setGeometry(Length(10.0, 10.0), 1.0, Position(0.0, 0.0));
+  map["layer"].setConstant(1.0f);
+
+  // Center is outside the map, but circle (r=7) overlaps with it
+  Position offCenter(8.0, 0.0);
+  double radius = 7.0;
+
+  size_t count = 0;
+  for (auto cell : map.circle(offCenter, radius)) {
+    // Every iterated cell must actually be within the circle
+    auto pos = positionFromCell(map, cell);
+    ASSERT_TRUE(pos.has_value());
+    double dx = pos->x() - offCenter.x();
+    double dy = pos->y() - offCenter.y();
+    EXPECT_LE(dx * dx + dy * dy, radius * radius + 1e-6);
+    ++count;
+  }
+  // The circle should cover some cells (the overlap region)
+  EXPECT_GT(count, 0u);
+
+  // Verify no false positives: count should be less than the full map
+  size_t totalCells = static_cast<size_t>(map.getSize().prod());
+  EXPECT_LT(count, totalCells);
+}
+
+TEST(SpatialIteration, CircleFullyOutside) {
+  GridMap map({"layer"});
+  map.setGeometry(Length(10.0, 10.0), 1.0, Position(0.0, 0.0));
+
+  // Circle entirely outside the map
+  size_t count = 0;
+  for (auto cell : map.circle(Position(20.0, 20.0), 3.0)) {
+    ++count;
+    (void)cell;
+  }
+  EXPECT_EQ(count, 0u);
+}
+
+TEST(SpatialIteration, CircleOffMapCenterAfterMove) {
+  GridMap map({"layer"});
+  map.setGeometry(Length(10.0, 10.0), 1.0, Position(0.0, 0.0));
+  map["layer"].setConstant(1.0f);
+
+  // Move the map to activate circular buffer
+  map.move(Position(3.0, 0.0));
+
+  // Center outside the moved map, circle overlaps
+  Position offCenter(12.0, 0.0);
+  double radius = 7.0;
+
+  size_t count = 0;
+  for (auto cell : map.circle(offCenter, radius)) {
+    auto pos = positionFromCell(map, cell);
+    ASSERT_TRUE(pos.has_value());
+    double dx = pos->x() - offCenter.x();
+    double dy = pos->y() - offCenter.y();
+    EXPECT_LE(dx * dx + dy * dy, radius * radius + 1e-6);
+    ++count;
+  }
+  EXPECT_GT(count, 0u);
+}
+
 }  // namespace nanogrid
