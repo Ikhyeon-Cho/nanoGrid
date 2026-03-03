@@ -80,6 +80,25 @@ target_link_libraries(your_target PUBLIC nanoGrid::nanoGrid)
 
 </details>
 
+<details>
+<summary>Using with ROS?</summary>
+<br>
+
+nanoGrid itself has zero ROS dependency. Optional header-only bridges provide `grid_map_msgs` conversion — just include one header in your ROS project:
+
+```cpp
+#include <nanogrid/bridge/ros2.hpp>  // or ros1.hpp
+
+auto msg = nanogrid::ros2::toMsg(map);              // publish
+auto map = nanogrid::ros2::fromMsg(msg);             // subscribe
+auto msg = nanogrid::ros2::toMsg(map, {"elevation"}); // selective layers
+auto marker = nanogrid::ros2::toBoundaryMarker(map);  // boundary marker
+```
+
+The bridge headers compile only when your project already depends on `grid_map_msgs`, `std_msgs`, and `visualization_msgs`.
+
+</details>
+
 ### Minimal Example
 
 Create a 20×20 m grid at 0.1 m resolution, add an elevation layer, write cells, and read back by world position:
