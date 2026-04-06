@@ -8,8 +8,7 @@
 
 #pragma once
 
-#include "nanogrid/BufferRegion.hpp"
-#include "nanogrid/SubmapGeometry.hpp"
+#include "nanogrid/detail/BufferRegion.hpp"
 #include "nanogrid/TypeDefs.hpp"
 
 // STL
@@ -23,8 +22,6 @@
 #include <Eigen/Geometry>
 
 namespace nanogrid {
-
-class SubmapGeometry;
 
 /*!
  * Grid map managing multiple overlaying maps holding float values.
@@ -76,12 +73,6 @@ class GridMap {
    * @param position the 2d position of the grid map in the grid map frame [m].
    */
   void setGeometry(const Length& length, const double resolution, const Position& position = Position::Zero());
-
-  /*!
-   * Set the geometry of the grid map from submap geometry information.
-   * @param geometry the submap geometry information.
-   */
-  void setGeometry(const SubmapGeometry& geometry);
 
   /*!
    * Add a new empty data layer.
@@ -161,26 +152,6 @@ class GridMap {
   [[nodiscard]] bool hasSameLayers(const nanogrid::GridMap& other) const;
 
   /*!
-   * Get cell data at requested position.
-   * @param layer the name of the layer to be accessed.
-   * @param position the requested position.
-   * @return the data of the cell.
-   * @throw std::out_of_range if no map layer with name `layer` is present.
-   */
-  float& atPosition(const std::string& layer, const Position& position);
-
-  /*!
-   * Get cell data at requested position. Const version form above.
-   * @param layer the name of the layer to be accessed.
-   * @param position the requested position.
-   * @return the data of the cell.
-   * @throw std::out_of_range if no map layer with name `layer` is present.
-   * @throw std::runtime_error if the specified interpolation method is not implemented.
-   */
-  float atPosition(const std::string& layer, const Position& position,
-                   InterpolationMethods interpolationMethod = InterpolationMethods::INTER_NEAREST) const;
-
-  /*!
    * Get cell data for requested index.
    * @param layer the name of the layer to be accessed.
    * @param index the requested index.
@@ -198,25 +169,8 @@ class GridMap {
    */
   float at(const std::string& layer, const Index& index) const;
 
-  /*!
-   * Gets the corresponding cell index for a position.
-   * @param[in] position the requested position.
-   * @param[out] index the corresponding index.
-   * @return true if successful, false if position outside of map.
-   */
-  bool getIndex(const Position& position, Index& index) const;
-
-  /*!
-   * Gets the 2d position of cell specified by the index (x, y of cell position) in
-   * the grid map frame.
-   * @param[in] index the index of the requested cell.
-   * @param[out] position the position of the data point in the parent frame.
-   * @return true if successful, false if index not within range of buffer.
-   */
-  bool getPosition(const Index& index, Position& position) const;
-
   // ============================================================
-  // Modern C++17 API — value-returning alternatives
+  // Modern C++17 API
   // ============================================================
 
   /*!
@@ -273,6 +227,10 @@ class GridMap {
    */
   [[nodiscard]] std::optional<GridMap> submap(const Position& position, const Length& length) const;
 
+  /// Lightweight submap geometry query (no data copy).
+  struct SubRegion { Index startIndex; Size size; };
+  [[nodiscard]] std::optional<SubRegion> subRegion(const Position& position, const Length& length) const;
+
   // ============================================================
 
   /*!
@@ -306,50 +264,6 @@ class GridMap {
   [[nodiscard]] bool isValid(const Index& index, const std::vector<std::string>& layers) const;
 
   /*!
-   * Gets the 3d position of a data point (x, y of cell position & cell value as z) in
-   * the grid map frame. This is useful for data layers such as elevation.
-   * @param layer the name of the layer to be accessed.
-   * @param index the index of the requested cell.
-   * @param position the position of the data point in the parent frame.
-   * @return true if successful, false if no valid data available.
-   */
-  bool getPosition3(const std::string& layer, const Index& index, Position3& position) const;
-
-  /*!
-   * Gets the 3d vector of three layers with suffixes 'x', 'y', and 'z'.
-   * @param layerPrefix the prefix for the layer to bet get as vector.
-   * @param index the index of the requested cell.
-   * @param vector the vector with the values of the data type.
-   * @return true if successful, false if no valid data available.
-   */
-  bool getVector(const std::string& layerPrefix, const Index& index, Eigen::Vector3d& vector) const;
-
-  /*!
-   * Gets a submap from the map. The requested submap is specified with the requested
-   * location and length.
-   * Note: The returned submap may not have the requested length due to the borders
-   * of the map and discretization.
-   * @param[in] position the requested position of the submap (usually the center).
-   * @param[in] length the requested length of the submap.
-   * @param[out] isSuccess true if successful, false otherwise.
-   * @return submap (is empty if success is false).
-   */
-  GridMap getSubmap(const Position& position, const Length& length, bool& isSuccess) const;
-
-  /*!
-   * Gets a submap from the map. The requested submap is specified with the requested
-   * location and length.
-   * Note: The returned submap may not have the requested length due to the borders
-   * of the map and discretization.
-   * @param[in] position the requested position of the submap (usually the center).
-   * @param[in] length the requested length of the submap.
-   * @param[out] indexInSubmap the index of the requested position in the submap.
-   * @param[out] isSuccess true if successful, false otherwise.
-   * @return submap (is empty if success is false).
-   */
-  GridMap getSubmap(const Position& position, const Length& length, Index& indexInSubmap, bool& isSuccess) const;
-
-  /*!
    * Apply isometric transformation (rotation + offset) to grid map and returns the transformed map.
    * Note: The returned map may not have the same length since it's geometric description contains
    * Note: The transformation will only be applied to the height layer of the grid map, other layers will remain untouched.
@@ -375,26 +289,6 @@ class GridMap {
    * @param position the 2d position of the grid map in the grid map frame [m].
    */
   void setPosition(const Position& position);
-
-  /*!
-   * Relocates the region captured by grid map w.r.t. to the static grid map frame. Use this to move the grid map boundaries
-   * without relocating the grid map data. Takes care of all the data handling, such that the grid map data is stationary in the grid map
-   * frame.
-   * - Data in the overlapping region before and after the position change remains stored.
-   * - Data that falls outside the map at its new position is discarded.
-   *  - Cells that cover previously unknown regions are emptied (set to nan).
-   *  The data storage is implemented as two-dimensional circular buffer to minimize computational effort.
-   *
-   *  Note: Due to the circular buffer structure, neighbouring indices might not fall close in the map frame.
-   *  This assumption only holds for indices obtained by getUnwrappedIndex().
-   *
-   *  Note: For a comparison between the `setPosition` and the `move` method, see the `move_demo_node.cpp` file of the `grid_map_demos` package.
-   *
-   * @param position the new location of the grid map in the map frame.
-   * @param newRegions the regions of the newly covered / previously uncovered regions of the buffer.
-   * @return true if map has been moved, false otherwise.
-   */
-  bool move(const Position& position, std::vector<BufferRegion>& newRegions);
 
   /*!
    * Move the grid map w.r.t. to the grid map frame. Use this to move the grid map
@@ -521,33 +415,42 @@ class GridMap {
    */
   Position getClosestPositionInMap(const Position& position) const;
 
-  /*!
-   * Lightweight cell descriptor yielded during iteration.
-   * Provides the linear index (for Eigen matrix access) and
-   * logical grid coordinates (buffer-independent row/col).
-   */
+  // ============================================================
+  // Cell descriptor
+  // ============================================================
+
+  /// Lightweight cell descriptor yielded during iteration.
+  /// Carries all index representations so that GridMap methods can
+  /// pick the most efficient one internally.
   struct Cell {
-    Eigen::Index index;  ///< Column-major linear index for data(cell.index) access.
+    Eigen::Index index;  ///< Column-major linear index — use with data(cell.index).
     int row;             ///< Logical grid row (0..rows-1, buffer-independent).
     int col;             ///< Logical grid column (0..cols-1, buffer-independent).
+    int bufRow;          ///< Buffer (physical) row in the Eigen matrix.
+    int bufCol;          ///< Buffer (physical) column in the Eigen matrix.
   };
 
-  /*!
-   * Returns a lightweight range for iterating all cells in physical
-   * (column-major) order. Each element is a Cell providing both the
-   * linear index and logical (row, col) coordinates.
-   *
-   * Iteration order is column-major (Eigen storage order) for
-   * cache-friendly access. Logical coordinates account for the
-   * circular buffer offset.
-   *
-   * Example:
-   *   auto& elevation = map["elevation"];
-   *   for (auto cell : map.cells()) {
-   *       elevation(cell.index) = 0.0f;    // linear index access
-   *       if (cell.row == 0) { ... }        // spatial info
-   *   }
-   */
+  // ============================================================
+  // Cell-based accessors
+  // ============================================================
+
+  /// Get cell value via Cell descriptor (fastest — linear index access).
+  float& at(const std::string& layer, const Cell& cell);
+  float  at(const std::string& layer, const Cell& cell) const;
+
+  /// Get the 2d position of a cell.
+  [[nodiscard]] std::optional<Position> position(const Cell& cell) const;
+
+  /// Check if any layer has a valid (finite) value at the cell.
+  [[nodiscard]] bool isValid(const Cell& cell) const;
+
+  /// Check if a specific layer has a valid (finite) value at the cell.
+  [[nodiscard]] bool isValid(const Cell& cell, const std::string& layer) const;
+
+  // ============================================================
+  // Range-based iteration: for (auto cell : map) { ... }
+  // ============================================================
+
   struct CellIterator {
     Eigen::Index i;
     int physRow, physCol;
@@ -558,7 +461,7 @@ class GridMap {
       if (logRow < 0) logRow += rows;
       int logCol = physCol - startCol;
       if (logCol < 0) logCol += cols;
-      return {i, logRow, logCol};
+      return {i, logRow, logCol, physRow, physCol};
     }
 
     CellIterator& operator++() {
@@ -581,16 +484,21 @@ class GridMap {
     CellIterator end() const { return {size, 0, 0, rows, cols, startRow, startCol}; }
   };
 
+  /// Iterate all cells. Prefer `for (auto cell : map)`.
   CellRange cells() const {
     return {static_cast<Eigen::Index>(size_.prod()),
             size_(0), size_(1), startIndex_(0), startIndex_(1)};
   }
 
+  /// Range-based for loop support.
+  CellIterator begin() const { return cells().begin(); }
+  CellIterator end() const { return cells().end(); }
+
   // ---------------------------------------------------------------------------
-  // Rectangular submap iteration
+  // Region iteration (rectangular world-coordinate area)
   // ---------------------------------------------------------------------------
 
-  struct RectIterator {
+  struct RegionIterator {
     int logRow, logCol;
     int startRow, endRow, startCol, endCol;
     int rows, cols, bufStartRow, bufStartCol;
@@ -599,10 +507,10 @@ class GridMap {
       int physRow = (logRow + bufStartRow) % rows;
       int physCol = (logCol + bufStartCol) % cols;
       Eigen::Index i = static_cast<Eigen::Index>(physCol) * rows + physRow;
-      return {i, logRow, logCol};
+      return {i, logRow, logCol, physRow, physCol};
     }
 
-    RectIterator& operator++() {
+    RegionIterator& operator++() {
       if (++logRow >= endRow) {
         logRow = startRow;
         ++logCol;
@@ -610,43 +518,43 @@ class GridMap {
       return *this;
     }
 
-    bool operator!=(const RectIterator& o) const {
+    bool operator!=(const RegionIterator& o) const {
       return logCol != o.logCol || logRow != o.logRow;
     }
   };
 
-  struct RectRange {
+  struct RegionRange {
     int startRow, endRow, startCol, endCol;
     int rows, cols, bufStartRow, bufStartCol;
 
-    RectIterator begin() const {
+    RegionIterator begin() const {
       if (startRow >= endRow || startCol >= endCol) return end();
       return {startRow, startCol, startRow, endRow, startCol, endCol,
               rows, cols, bufStartRow, bufStartCol};
     }
 
-    RectIterator end() const {
+    RegionIterator end() const {
       return {startRow, endCol, startRow, endRow, startCol, endCol,
               rows, cols, bufStartRow, bufStartCol};
     }
   };
 
   /// Iterate cells within a rectangular world-coordinate region.
-  RectRange rect(const Position& center, const Length& size) const;
+  RegionRange region(const Position& center, const Length& size) const;
 
   // ---------------------------------------------------------------------------
-  // Circular region iteration
+  // Circle iteration
   // ---------------------------------------------------------------------------
 
   struct CircleIterator {
-    RectIterator it, rectEnd;
+    RegionIterator it, regionEnd;
     double centerRow, centerCol;
     double radiusSq, resolution;
 
     Cell operator*() const { return *it; }
 
     CircleIterator& operator++() {
-      do { ++it; } while (it != rectEnd && !isInside());
+      do { ++it; } while (it != regionEnd && !isInside());
       return *this;
     }
 
@@ -661,20 +569,20 @@ class GridMap {
   };
 
   struct CircleRange {
-    RectRange rect;
+    RegionRange rgn;
     double centerRow, centerCol;
     double radiusSq, resolution;
 
     CircleIterator begin() const {
-      auto b = rect.begin();
-      auto e = rect.end();
+      auto b = rgn.begin();
+      auto e = rgn.end();
       CircleIterator cit{b, e, centerRow, centerCol, radiusSq, resolution};
       if (b != e && !cit.isInside()) ++cit;
       return cit;
     }
 
     CircleIterator end() const {
-      auto e = rect.end();
+      auto e = rgn.end();
       return {e, e, centerRow, centerCol, radiusSq, resolution};
     }
   };
@@ -683,7 +591,7 @@ class GridMap {
   CircleRange circle(const Position& center, double radius) const;
 
   // ---------------------------------------------------------------------------
-  // Precomputed neighbor region
+  // Precomputed neighborhood
   // ---------------------------------------------------------------------------
 
   /// Neighbor descriptor: Cell + squared distance to center.
@@ -691,25 +599,25 @@ class GridMap {
     float dist_sq;  ///< Squared distance in meters from the center cell.
   };
 
-  struct Region {
+  struct Kernel {
     struct Entry { int dr, dc; float dist_sq; };
     std::vector<Entry> entries;
     int minDr = 0, maxDr = 0, minDc = 0, maxDc = 0;
   };
 
-  /// Precompute a circular neighbor region (radius in meters).
-  Region region(double radius) const;
+  /// Precompute a circular neighborhood (radius in meters).
+  Kernel kernel(double radius) const;
 
-  /// Precompute a rectangular neighbor region (window size in cells).
-  Region region(const Size& window) const;
+  /// Precompute a rectangular neighborhood (window size in cells).
+  Kernel kernel(const Size& window) const;
 
   // ---------------------------------------------------------------------------
-  // Neighbor iteration using precomputed Region
+  // Neighbor iteration using precomputed Kernel
   // ---------------------------------------------------------------------------
 
   struct NeighborIterator {
-    const Region::Entry* ptr;
-    const Region::Entry* end;
+    const Kernel::Entry* ptr;
+    const Kernel::Entry* end;
     int centerRow, centerCol;
     int rows, cols, bufStartRow, bufStartCol;
     bool allValid;
@@ -720,7 +628,7 @@ class GridMap {
       int physRow = (logRow + bufStartRow) % rows;
       int physCol = (logCol + bufStartCol) % cols;
       Eigen::Index i = static_cast<Eigen::Index>(physCol) * rows + physRow;
-      return {{i, logRow, logCol}, ptr->dist_sq};
+      return {{i, logRow, logCol, physRow, physCol}, ptr->dist_sq};
     }
 
     NeighborIterator& operator++() {
@@ -742,8 +650,8 @@ class GridMap {
   };
 
   struct NeighborRange {
-    const Region::Entry* data;
-    const Region::Entry* dataEnd;
+    const Kernel::Entry* data;
+    const Kernel::Entry* dataEnd;
     int centerRow, centerCol;
     int rows, cols, bufStartRow, bufStartCol;
     bool allValid;
@@ -762,22 +670,24 @@ class GridMap {
     }
 
    private:
-    bool isValid(const Region::Entry* p) const {
+    bool isValid(const Kernel::Entry* p) const {
       int r = centerRow + p->dr;
       int c = centerCol + p->dc;
       return r >= 0 && r < rows && c >= 0 && c < cols;
     }
   };
 
-  /// Iterate neighbors of a cell using a precomputed Region.
-  NeighborRange neighbors(const Cell& cell, const Region& region) const;
+  /// Iterate neighbors of a cell using a precomputed Kernel.
+  NeighborRange neighbors(const Cell& cell, const Kernel& nbr) const;
 
  private:
-  /**
-   * Defines data validation check
-   * @param value
-   * @return true if value is valid
-   */
+  // Internal helpers.
+  bool getIndex(const Position& position, Index& index) const;
+  bool getPosition(const Index& index, Position& position) const;
+  GridMap getSubmap(const Position& position, const Length& length, bool& isSuccess) const;
+  GridMap getSubmap(const Position& position, const Length& length, Index& indexInSubmap, bool& isSuccess) const;
+  bool move(const Position& position, std::vector<BufferRegion>& newRegions);
+
   bool isValid(DataType value) const;
 
   /*!
@@ -793,41 +703,6 @@ class GridMap {
    * @param nRows the number of rows to reset.
    */
   void clearRows(unsigned int index, unsigned int nRows);
-
-  /*!
-   * Get cell data at requested position, linearly interpolated from 2x2 cells.
-   * @param layer the name of the layer to be accessed.
-   * @param position the requested position.
-   * @param value the data of the cell.
-   * @return true if linear interpolation was successful.
-   */
-  bool atPositionLinearInterpolated(const std::string& layer, const Position& position, float& value) const;
-
-  /*!
-   * Get cell data at requested position, cubic convolution
-   * interpolated from 4x4 cells. At the edge of the map,
-   * the algorithm assumes that height continues with the slope 0.
-   * I.e. the border cells just repeat outside of the map
-   * Taken from: https://en.wikipedia.org/wiki/Bicubic_interpolation
-   * @param[in] layer the name of the layer to be accessed.
-   * @param[in] position the requested position.
-   * @param[out] value the data of the cell.
-   * @return true if bicubic convolution interpolation was successful.
-   */
-  bool atPositionBicubicConvolutionInterpolated(const std::string& layer, const Position& position, float& value) const;
-
-  /*!
-   * Get cell data at requested position, cubic interpolated
-   * on a square. At the edge of the map,
-   * the algorithm assumes that height continues with the slope 0.
-   * I.e. the border cells just repeat outside of the map
-   * Taken from: https://en.wikipedia.org/wiki/Bicubic_interpolation
-   * @param[in] layer the name of the layer to be accessed.
-   * @param[in] position the requested position.
-   * @param[out] value the data of the cell.
-   * @return true if bicubic interpolation was successful.
-   */
-  bool atPositionBicubicInterpolated(const std::string& layer, const Position& position, float& value) const;
 
   /*!
    * Resize the buffer.

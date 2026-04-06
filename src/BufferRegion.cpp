@@ -5,7 +5,7 @@
  *      Author: Péter Fankhauser
  *   Institute: ETH Zurich, ANYbotics
  */
-#include <nanogrid/BufferRegion.hpp>
+#include <nanogrid/detail/BufferRegion.hpp>
 
 namespace nanogrid {
 

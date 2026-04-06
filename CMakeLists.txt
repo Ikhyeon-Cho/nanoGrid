@@ -37,9 +37,6 @@ add_library(${PROJECT_NAME}
   src/GridMap.cpp
   src/GridMapMath.cpp
   src/BufferRegion.cpp
-  src/SubmapGeometry.cpp
-  src/CubicInterpolation.cpp
-  src/iterators/GridMapIterator.cpp
 )
 add_library(${PROJECT_NAME}::${PROJECT_NAME} ALIAS ${PROJECT_NAME})
 
@@ -49,12 +46,6 @@ target_include_directories(${PROJECT_NAME} PUBLIC
 )
 
 target_link_libraries(${PROJECT_NAME} PUBLIC Eigen3::Eigen)
-
-# Eigen plugins for NaN-aware reductions (sumOfFinites, meanOfFinites, etc.)
-target_compile_definitions(${PROJECT_NAME} PUBLIC
-  EIGEN_FUNCTORS_PLUGIN="nanogrid/eigen_plugins/FunctorsPlugin.hpp"
-  EIGEN_DENSEBASE_PLUGIN="nanogrid/eigen_plugins/DenseBasePlugin.hpp"
-)
 
 # =======================
 # Tests

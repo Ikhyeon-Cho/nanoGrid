@@ -9,11 +9,10 @@
 #pragma once
 
 #include "nanogrid/TypeDefs.hpp"
-#include "nanogrid/BufferRegion.hpp"
+#include "nanogrid/detail/BufferRegion.hpp"
 
 #include <Eigen/Core>
 #include <vector>
-#include <map>
 
 namespace nanogrid {
 
@@ -65,16 +64,6 @@ bool getIndexFromPosition(Index& index,
 bool checkIfPositionWithinMap(const Position& position,
                               const Length& mapLength,
                               const Position& mapPosition);
-
-/*!
- * Gets the position of the data structure origin.
- * @param[in] position the position of the map.
- * @param[in] mapLength the map length.
- * @param[out] positionOfOrigin the position of the data structure origin.
- */
-void getPositionOfDataStructureOrigin(const Position& position,
-                                      const Length& mapLength,
-                                      Position& positionOfOrigin);
 
 /*!
  * Computes how many cells/indices the map is moved based on a position shift in
@@ -154,13 +143,6 @@ void wrapIndexToRange(int& index, int bufferSize);
 void boundPositionToRange(Position& position, const Length& mapLength, const Position& mapPosition);
 
 /*!
- * Provides the alignment transformation from the buffer order (outer/inner storage)
- * and the map frame (x/y-coordinate).
- * @return the alignment transformation.
- */
-Eigen::Matrix2i getBufferOrderToMapFrameAlignment();
-
-/*!
  * Given a map and a desired submap (defined by position and size), this function computes
  * various information about the submap. The returned submap might be smaller than the requested
  * size as it respects the boundaries of the map.
@@ -218,38 +200,6 @@ bool getBufferRegionsForSubmap(std::vector<BufferRegion>& submapBufferRegions,
                                const Index& bufferStartIndex = Index::Zero());
 
 /*!
- * Increases the index by one to iterate through the map.
- * Increments either to the neighboring index to the right or to
- * the start of the lower row. Returns false if end of iterations are reached.
- * @param[in/out] index the index in the map that is incremented (corrected for the circular buffer).
- * @param[in] bufferSize the map buffer size.
- * @param[in] bufferStartIndex the map buffer start index.
- * @return true if successfully incremented indices, false if end of iteration limits are reached.
- */
-bool incrementIndex(Index& index, const Size& bufferSize,
-                    const Index& bufferStartIndex = Index::Zero());
-
-/*!
- * Increases the index by one to iterate through the cells of a submap.
- * Increments either to the neighboring index to the right or to
- * the start of the lower row. Returns false if end of iterations are reached.
- *
- * Note: This function does not check if submap actually fits to the map. This needs
- * to be checked before separately.
- *
- * @param[in/out] submapIndex the index in the submap that is incremented.
- * @param[out] index the index in the map that is incremented (corrected for the circular buffer).
- * @param[in] submapTopLefIndex the top left index of the submap.
- * @param[in] submapBufferSize the submap buffer size.
- * @param[in] bufferSize the map buffer size.
- * @param[in] bufferStartIndex the map buffer start index.
- * @return true if successfully incremented indices, false if end of iteration limits are reached.
- */
-bool incrementIndexForSubmap(Index& submapIndex, Index& index, const Index& submapTopLeftIndex,
-                             const Size& submapBufferSize, const Size& bufferSize,
-                             const Index& bufferStartIndex = Index::Zero());
-
-/*!
  * Retrieve the index as unwrapped index, i.e., as the corresponding index of a
  * grid map with no circular buffer offset.
  * @param bufferIndex the index in the circular buffer.
@@ -288,51 +238,5 @@ size_t getLinearIndexFromIndex(const Index& index, const Size& bufferSize, bool 
  * @return the regular 2d index.
  */
 Index getIndexFromLinearIndex(size_t linearIndex, const Size& bufferSize, bool rowMajor = false);
-
-/*!
- * Transforms an int color value (concatenated RGB values) to an int color vector (RGB from 0-255).
- * @param [in] colorValue the concatenated RGB color value.
- * @param [out] colorVector the color vector in RGB from 0-255.
- * @return true if successful.
- */
-bool colorValueToVector(const unsigned long& colorValue, Eigen::Vector3i& colorVector);
-
-/*!
- * Transforms an int color value (concatenated RGB values) to a float color vector (RGB from 0.0-1.0).
- * @param [in] colorValue the concatenated RGB color value.
- * @param [out] colorVector the color vector in RGB from 0.0-1.0.
- * @return true if successful.
- */
-bool colorValueToVector(const unsigned long& colorValue, Eigen::Vector3f& colorVector);
-
-/*!
- * Transforms a float color value (concatenated 3 single-byte value) to a float color vector (RGB from 0.0-1.0).
- * @param [in] colorValue the concatenated RGB color value.
- * @param [out] colorVector the color vector in RGB from 0.0-1.0.
- * @return true if successful.
- */
-bool colorValueToVector(const float& colorValue, Eigen::Vector3f& colorVector);
-
-/*!
- * Transforms an int color vector (RGB from 0-255) to a concatenated RGB int color.
- * @param [in] colorVector the color vector in RGB from 0-255.
- * @param [out] colorValue the concatenated RGB color value.
- * @return true if successful.
- */
-bool colorVectorToValue(const Eigen::Vector3i& colorVector, unsigned long& colorValue);
-
-/*!
- * Transforms a color vector (RGB from 0-255) to a concatenated 3 single-byte float value.
- * @param [in] colorVector the color vector in RGB from 0-255.
- * @param [out] colorValue the concatenated RGB color value.
- */
-void colorVectorToValue(const Eigen::Vector3i& colorVector, float& colorValue);
-
-/*!
- * Transforms a color vector (RGB from 0.0-1.0) to a concatenated 3 single-byte float value.
- * @param [in] colorVector the color vector in RGB from 0.0-1.0.
- * @param [out] colorValue the concatenated RGB color value.
- */
-void colorVectorToValue(const Eigen::Vector3f& colorVector, float& colorValue);
 
 }  // namespace nanogrid

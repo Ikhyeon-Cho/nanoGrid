@@ -84,13 +84,4 @@ void fillGridMap(nanogrid::GridMap *map, const AnalyticalFunctions &functions);
 std::vector<Point2D> uniformlyDitributedPointsWithinMap(const nanogrid::GridMap &map,
                                                         unsigned int numPoints);
 
-/*
- * For each point in queryPoints, verify that the interpolated value of the grid map
- * is close to the ground truth which is contained in Analytical functions structure.
- * Called inside the tests. Calls macros from gtest.
- */
-void verifyValuesAtQueryPointsAreClose(const nanogrid::GridMap &map, const AnalyticalFunctions &trueValues,
-                               const std::vector<Point2D> &queryPoints,
-                               nanogrid::InterpolationMethods interpolationMethod);
-
 }  // namespace nanogrid_test

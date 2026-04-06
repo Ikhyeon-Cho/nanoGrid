@@ -9,7 +9,6 @@
 #include "test_helpers.hpp"
 
 #include "nanogrid/GridMap.hpp"
-#include "nanogrid/iterators/GridMapIterator.hpp"
 
 // gtest
 #include <gtest/gtest.h>
@@ -169,17 +168,14 @@ AnalyticalFunctions createGaussianWorld(nanogrid::GridMap *map)
 void fillGridMap(nanogrid::GridMap *map, const AnalyticalFunctions &functions)
 {
   using nanogrid::DataType;
-  using nanogrid::GridMapIterator;
-  using nanogrid::Index;
   using nanogrid::Matrix;
-  using nanogrid::Position;
 
   Matrix& data = (*map)[testLayer];
-  for (GridMapIterator iterator(*map); !iterator.isPastEnd(); ++iterator) {
-    const Index index(*iterator);
-    Position pos;
-    map->getPosition(index, pos);
-    data(index(0), index(1)) = static_cast<DataType>(functions.f_(pos.x(), pos.y()));
+  for (auto cell : *map) {
+    auto pos = map->position(cell);
+    if (pos) {
+      data(cell.index) = static_cast<DataType>(functions.f_(pos->x(), pos->y()));
+    }
   }
 }
 
@@ -214,19 +210,6 @@ std::vector<Point2D> uniformlyDitributedPointsWithinMap(const nanogrid::GridMap 
 
   return points;
 }
-
-void verifyValuesAtQueryPointsAreClose(const nanogrid::GridMap &map, const AnalyticalFunctions &trueValues,
-                               const std::vector<Point2D> &queryPoints,
-                               nanogrid::InterpolationMethods interpolationMethod){
-  for (const auto point : queryPoints) {
-    const nanogrid::Position p(point.x_, point.y_);
-    const double trueValue = trueValues.f_(p.x(), p.y());
-    const double interpolatedValue = map.atPosition(
-        nanogrid_test::testLayer, p, interpolationMethod);
-    EXPECT_NEAR(trueValue, interpolatedValue, nanogrid_test::maxAbsErrorValue);
-  }
-}
-
 
 } /* namespace nanogrid_test */
 

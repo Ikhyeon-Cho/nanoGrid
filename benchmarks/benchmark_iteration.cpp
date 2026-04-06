@@ -6,7 +6,6 @@
  */
 
 #include <nanogrid/nanogrid.hpp>
-#include <nanogrid/iterators/GridMapIterator.hpp>
 #include <chrono>
 #include <iostream>
 #include <iomanip>
@@ -16,37 +15,6 @@
 
 using namespace nanogrid;
 using Clock = std::chrono::high_resolution_clock;
-
-// V1: Iterator + map.at() (slowest)
-void v1_iterator_at(GridMap& map) {
-  for (GridMapIterator it(map); !it.isPastEnd(); ++it) {
-    const float src = map.at("from", *it);
-    float& dst = map.at("to", *it);
-    dst = dst > src ? dst : src;
-  }
-}
-
-// V2: Iterator + operator*() with cached layer
-void v2_iterator_deref(GridMap& map) {
-  const auto& src = map["from"];
-  auto& dst = map["to"];
-  for (GridMapIterator it(map); !it.isPastEnd(); ++it) {
-    const Index idx(*it);
-    const float s = src(idx(0), idx(1));
-    float& d = dst(idx(0), idx(1));
-    d = d > s ? d : s;
-  }
-}
-
-// V3: Iterator + getLinearIndex()
-void v3_iterator_linear(GridMap& map) {
-  const auto& src = map["from"];
-  auto& dst = map["to"];
-  for (GridMapIterator it(map); !it.isPastEnd(); ++it) {
-    const size_t i = it.getLinearIndex();
-    dst(i) = dst(i) > src(i) ? dst(i) : src(i);
-  }
-}
 
 // V4: Eigen built-in
 void v4_eigen(GridMap& map) {
@@ -77,7 +45,7 @@ void v6_raw_linear(GridMap& map) {
 void v7_cells(GridMap& map) {
   const auto& src = map["from"];
   auto& dst = map["to"];
-  for (auto cell : map.cells()) {
+  for (auto cell : map) {
     dst(cell.index) = dst(cell.index) > src(cell.index) ? dst(cell.index) : src(cell.index);
   }
 }
@@ -87,7 +55,7 @@ void v8_cells_rowcol(GridMap& map) {
   const auto& src = map["from"];
   auto& dst = map["to"];
   int dummy = 0;
-  for (auto cell : map.cells()) {
+  for (auto cell : map) {
     dst(cell.index) = dst(cell.index) > src(cell.index) ? dst(cell.index) : src(cell.index);
     dummy += cell.row;
   }
@@ -135,9 +103,6 @@ int main() {
   std::cout << std::string(60, '-') << "\n";
 
   std::vector<BenchResult> results;
-  results.push_back({"V1: Iterator + map.at()",       bench(map, v1_iterator_at)});
-  results.push_back({"V2: Iterator + operator*()",     bench(map, v2_iterator_deref)});
-  results.push_back({"V3: Iterator + getLinearIndex()", bench(map, v3_iterator_linear)});
   results.push_back({"V4: Eigen cwiseMax()",           bench(map, v4_eigen)});
   results.push_back({"V5: Raw 2D loop",               bench(map, v5_raw_2d)});
   results.push_back({"V6: Raw linear loop",           bench(map, v6_raw_linear)});

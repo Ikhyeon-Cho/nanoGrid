@@ -54,8 +54,7 @@ TEST(GridMap, Move)
   GridMap map;
   map.setGeometry(Length(8.1, 5.1), 1.0, Position(0.0, 0.0)); // bufferSize(8, 5)
   map.add("layer", 0.0);
-  std::vector<BufferRegion> regions;
-  map.move(Position(-3.0, -2.0), regions);
+  map.move(Position(-3.0, -2.0));
   Index startIndex = map.getStartIndex();
 
   EXPECT_EQ(3, startIndex(0));
@@ -76,15 +75,6 @@ TEST(GridMap, Move)
     }
   }
 
-  EXPECT_EQ(2, regions.size());
-  EXPECT_EQ(0, regions[0].getStartIndex()[0]);
-  EXPECT_EQ(0, regions[0].getStartIndex()[1]);
-  EXPECT_EQ(3, regions[0].getSize()[0]);
-  EXPECT_EQ(5, regions[0].getSize()[1]);
-  EXPECT_EQ(0, regions[1].getStartIndex()[0]);
-  EXPECT_EQ(0, regions[1].getStartIndex()[1]);
-  EXPECT_EQ(8, regions[1].getSize()[0]);
-  EXPECT_EQ(2, regions[1].getSize()[1]);
 }
 
 TEST(GridMap, Transform)
@@ -180,7 +170,9 @@ TEST(GridMap, ClipToMap2)
   // Point A
   outsidePosition = Position(1.0, 1.0);
   auto closestInsidePosition = map.getClosestPositionInMap(outsidePosition);
-  bool isInside = map.getIndex(closestInsidePosition, insideIndex);
+  auto insideIdxOpt = map.index(closestInsidePosition);
+  bool isInside = insideIdxOpt.has_value();
+  if (isInside) insideIndex = *insideIdxOpt;
 
   auto expectedPosition = Position(0.5, 0.5);
   auto expectedIndex = Index(0, 0);
@@ -202,7 +194,9 @@ TEST(GridMap, ClipToMap2)
   // Point B
   outsidePosition = Position(1.0, 0.0);
   closestInsidePosition = map.getClosestPositionInMap(outsidePosition);
-  isInside = map.getIndex(closestInsidePosition, insideIndex);
+  insideIdxOpt = map.index(closestInsidePosition);
+  isInside = insideIdxOpt.has_value();
+  if (isInside) insideIndex = *insideIdxOpt;
 
   expectedPosition = Position(0.5, 0.0);
   expectedIndex = Index(0, 10);
@@ -224,7 +218,9 @@ TEST(GridMap, ClipToMap2)
   // Point C
   outsidePosition = Position(1.0, -1.0);
   closestInsidePosition = map.getClosestPositionInMap(outsidePosition);
-  isInside = map.getIndex(closestInsidePosition, insideIndex);
+  insideIdxOpt = map.index(closestInsidePosition);
+  isInside = insideIdxOpt.has_value();
+  if (isInside) insideIndex = *insideIdxOpt;
 
   expectedPosition = Position(0.5, -0.5);
   expectedIndex = Index(0, 19);
@@ -246,7 +242,9 @@ TEST(GridMap, ClipToMap2)
   // Point D
   outsidePosition = Position(0.0, 1.0);
   closestInsidePosition = map.getClosestPositionInMap(outsidePosition);
-  isInside = map.getIndex(closestInsidePosition, insideIndex);
+  insideIdxOpt = map.index(closestInsidePosition);
+  isInside = insideIdxOpt.has_value();
+  if (isInside) insideIndex = *insideIdxOpt;
 
   expectedPosition = Position(0.0, 0.5);
   expectedIndex = Index(10, 0);
@@ -268,7 +266,9 @@ TEST(GridMap, ClipToMap2)
   // Point E
   outsidePosition = Position(0.0, -1.0);
   closestInsidePosition = map.getClosestPositionInMap(outsidePosition);
-  isInside = map.getIndex(closestInsidePosition, insideIndex);
+  insideIdxOpt = map.index(closestInsidePosition);
+  isInside = insideIdxOpt.has_value();
+  if (isInside) insideIndex = *insideIdxOpt;
 
   expectedPosition = Position(0.0, -0.5);
   expectedIndex = Index(10, 19);
@@ -290,7 +290,9 @@ TEST(GridMap, ClipToMap2)
   // Point F
   outsidePosition = Position(-1.0, 1.0);
   closestInsidePosition = map.getClosestPositionInMap(outsidePosition);
-  isInside = map.getIndex(closestInsidePosition, insideIndex);
+  insideIdxOpt = map.index(closestInsidePosition);
+  isInside = insideIdxOpt.has_value();
+  if (isInside) insideIndex = *insideIdxOpt;
 
   expectedPosition = Position(-0.5, 0.5);
   expectedIndex = Index(19, 0);
@@ -312,7 +314,9 @@ TEST(GridMap, ClipToMap2)
   // Point G
   outsidePosition = Position(-1.0, 0.0);
   closestInsidePosition = map.getClosestPositionInMap(outsidePosition);
-  isInside = map.getIndex(closestInsidePosition, insideIndex);
+  insideIdxOpt = map.index(closestInsidePosition);
+  isInside = insideIdxOpt.has_value();
+  if (isInside) insideIndex = *insideIdxOpt;
 
   expectedPosition = Position(-0.5, 0.0);
   expectedIndex = Index(19, 10);
@@ -334,7 +338,9 @@ TEST(GridMap, ClipToMap2)
   // Point H
   outsidePosition = Position(-1.0, -1.0);
   closestInsidePosition = map.getClosestPositionInMap(outsidePosition);
-  isInside = map.getIndex(closestInsidePosition, insideIndex);
+  insideIdxOpt = map.index(closestInsidePosition);
+  isInside = insideIdxOpt.has_value();
+  if (isInside) insideIndex = *insideIdxOpt;
 
   expectedPosition = Position(-0.5, -0.5);
   expectedIndex = Index(19, 19);
@@ -374,9 +380,9 @@ TEST(AddDataFrom, ExtendMapAligned)
   EXPECT_DOUBLE_EQ(6.0, map1.getLength().y());
   EXPECT_DOUBLE_EQ(0.5, map1.getPosition().x());
   EXPECT_DOUBLE_EQ(0.5, map1.getPosition().y());
-  EXPECT_NEAR(1.1, map1.atPosition("one", Position(2, 2)), 1e-4);
-  EXPECT_DOUBLE_EQ(1.0, map1.atPosition("one", Position(-2, -2)));
-  EXPECT_DOUBLE_EQ(0.0, map1.atPosition("zero", Position(0.0, 0.0)));
+  EXPECT_NEAR(1.1, *map1.get("one", Position(2, 2)), 1e-4);
+  EXPECT_DOUBLE_EQ(1.0, *map1.get("one", Position(-2, -2)));
+  EXPECT_DOUBLE_EQ(0.0, *map1.get("zero", Position(0.0, 0.0)));
 }
 
 TEST(AddDataFrom, ExtendMapNotAligned)
@@ -396,8 +402,8 @@ TEST(AddDataFrom, ExtendMapNotAligned)
   std::vector<std::string> stringVector;
   stringVector.emplace_back("nan");
   map1.addDataFrom(map2, true, false, false, stringVector);
-  Index index;
-  map1.getIndex(Position(-2, -2), index);
+  auto idx = map1.index(Position(-2, -2));
+  ASSERT_TRUE(idx.has_value());
 
   EXPECT_FALSE(map1.exists("two"));
   EXPECT_TRUE(map1.isInside(Position(4.0, 4.0)));
@@ -405,9 +411,9 @@ TEST(AddDataFrom, ExtendMapNotAligned)
   EXPECT_DOUBLE_EQ(8.0, map1.getLength().y());
   EXPECT_DOUBLE_EQ(1.0, map1.getPosition().x());
   EXPECT_DOUBLE_EQ(1.0, map1.getPosition().y());
-  EXPECT_FALSE(map1.isValid(index, "nan"));
-  EXPECT_DOUBLE_EQ(1.0, map1.atPosition("one", Position(0.0, 0.0)));
-  EXPECT_DOUBLE_EQ(1.0, map1.atPosition("nan", Position(3.0, 3.0)));
+  EXPECT_FALSE(map1.isValid(*idx, "nan"));
+  EXPECT_DOUBLE_EQ(1.0, *map1.get("one", Position(0.0, 0.0)));
+  EXPECT_DOUBLE_EQ(1.0, *map1.get("nan", Position(3.0, 3.0)));
 }
 
 TEST(AddDataFrom, CopyData)
@@ -423,8 +429,8 @@ TEST(AddDataFrom, CopyData)
   map2.add("two", 2.0);
 
   map1.addDataFrom(map2, false, false, true);
-  Index index;
-  map1.getIndex(Position(-2, -2), index);
+  auto idx = map1.index(Position(-2, -2));
+  ASSERT_TRUE(idx.has_value());
 
   EXPECT_TRUE(map1.exists("two"));
   EXPECT_FALSE(map1.isInside(Position(3.0, 3.0)));
@@ -432,57 +438,9 @@ TEST(AddDataFrom, CopyData)
   EXPECT_DOUBLE_EQ(5.0, map1.getLength().y());
   EXPECT_DOUBLE_EQ(0.0, map1.getPosition().x());
   EXPECT_DOUBLE_EQ(0.0, map1.getPosition().y());
-  EXPECT_DOUBLE_EQ(1.0, map1.atPosition("one", Position(2, 2)));
-  EXPECT_FALSE(map1.isValid(index, "one"));
-  EXPECT_DOUBLE_EQ(0.0, map1.atPosition("zero", Position(0.0, 0.0)));
-}
-
-TEST(ValueAtPosition, NearestNeighbor)
-{
-  GridMap map( { "types" });
-  map.setGeometry(Length(3.0, 3.0), 1.0, Position(0.0, 0.0));
-
-  map.at("types", Index(0,0)) = 0.5f;
-  map.at("types", Index(0,1)) = 3.8f;
-  map.at("types", Index(0,2)) = 2.0f;
-  map.at("types", Index(1,0)) = 2.1f;
-  map.at("types", Index(1,1)) = 1.0f;
-  map.at("types", Index(1,2)) = 2.0f;
-  map.at("types", Index(2,0)) = 1.0f;
-  map.at("types", Index(2,1)) = 2.0f;
-  map.at("types", Index(2,2)) = 2.0f;
-
-  double value = map.atPosition("types", Position(1.35,-0.4));
-  EXPECT_DOUBLE_EQ(3.8f, value);
-
-  value = map.atPosition("types", Position(-0.3,0.0));
-  EXPECT_DOUBLE_EQ(1.0, value);
-}
-
-TEST(ValueAtPosition, LinearInterpolated)
-{
-  GridMap map( { "types" });
-  map.setGeometry(Length(3.0, 3.0), 1.0, Position(0.0, 0.0));
-
-  map.at("types", Index(0,0)) = 0.5f;
-  map.at("types", Index(0,1)) = 3.8f;
-  map.at("types", Index(0,2)) = 2.0f;
-  map.at("types", Index(1,0)) = 2.1f;
-  map.at("types", Index(1,1)) = 1.0f;
-  map.at("types", Index(1,2)) = 2.0f;
-  map.at("types", Index(2,0)) = 1.0f;
-  map.at("types", Index(2,1)) = 2.0f;
-  map.at("types", Index(2,2)) = 2.0f;
-
-  // Close to the border -> reverting to INTER_NEAREST.
-  double value = map.atPosition("types", Position(-0.5,-1.2), InterpolationMethods::INTER_LINEAR);
-  EXPECT_DOUBLE_EQ(2.0, value);
-  // In between 1.0 and 2.0 field.
-  value = map.atPosition("types", Position(-0.5,0.0), InterpolationMethods::INTER_LINEAR);
-  EXPECT_DOUBLE_EQ(1.5, value);
-  // Calculated "by Hand".
-  value = map.atPosition("types", Position(0.69,0.38), InterpolationMethods::INTER_LINEAR);
-  EXPECT_NEAR(2.1963200, value, 0.0000001);
+  EXPECT_DOUBLE_EQ(1.0, *map1.get("one", Position(2, 2)));
+  EXPECT_FALSE(map1.isValid(*idx, "one"));
+  EXPECT_DOUBLE_EQ(0.0, *map1.get("zero", Position(0.0, 0.0)));
 }
 
 // ============================================================
@@ -572,29 +530,6 @@ TEST(ModernAPI, Submap) {
   EXPECT_FALSE(none.has_value());
 }
 
-TEST(ModernAPI, ConsistencyWithLegacy) {
-  GridMap map({"elevation"});
-  map.setGeometry(Length(2.0, 2.0), 0.1, Position(0.0, 0.0));
-  map.at("elevation", Index(10, 10)) = 5.0f;
-
-  // index() should match getIndex()
-  Index legacyIdx;
-  Position queryPos(0.0, 0.0);
-  bool legacySuccess = map.getIndex(queryPos, legacyIdx);
-  auto modernIdx = map.index(queryPos);
-  ASSERT_EQ(legacySuccess, modernIdx.has_value());
-  EXPECT_EQ(legacyIdx(0), (*modernIdx)(0));
-  EXPECT_EQ(legacyIdx(1), (*modernIdx)(1));
-
-  // position() should match getPosition()
-  Position legacyPos;
-  bool legacySuccess2 = map.getPosition(Index(10, 10), legacyPos);
-  auto modernPos = map.position(Index(10, 10));
-  ASSERT_EQ(legacySuccess2, modernPos.has_value());
-  EXPECT_DOUBLE_EQ(legacyPos.x(), modernPos->x());
-  EXPECT_DOUBLE_EQ(legacyPos.y(), modernPos->y());
-}
-
 TEST(ModernAPI, GetByIndex) {
   GridMap map({"elevation"});
   map.setGeometry(Length(1.0, 1.0), 0.1, Position(0.0, 0.0));
@@ -616,9 +551,9 @@ TEST(ModernAPI, GetByPosition) {
   map.at("elevation", Index(5, 5)) = 2.71f;
 
   // Valid position with valid data
-  Position pos;
-  map.getPosition(Index(5, 5), pos);
-  auto val = map.get("elevation", pos);
+  auto pos = map.position(Index(5, 5));
+  ASSERT_TRUE(pos.has_value());
+  auto val = map.get("elevation", *pos);
   ASSERT_TRUE(val.has_value());
   EXPECT_FLOAT_EQ(*val, 2.71f);
 
@@ -663,13 +598,13 @@ TEST(ModernAPI, Cells) {
   data.setConstant(0.0f);
 
   // Write via cells()
-  for (auto cell : map.cells()) {
+  for (auto cell : map) {
     data(cell.index) = static_cast<float>(cell.index);
   }
 
   // Verify all cells were written
   size_t count = 0;
-  for (auto cell : map.cells()) {
+  for (auto cell : map) {
     EXPECT_FLOAT_EQ(data(cell.index), static_cast<float>(cell.index));
     ++count;
   }
@@ -688,7 +623,7 @@ TEST(ModernAPI, CellsConsistencyWithDirectLoop) {
 
   // cells() should visit same indices in same order as direct loop
   Eigen::Index direct_i = 0;
-  for (auto cell : map.cells()) {
+  for (auto cell : map) {
     EXPECT_EQ(cell.index, direct_i);
     EXPECT_FLOAT_EQ(data(cell.index), static_cast<float>(direct_i) * 0.5f);
     ++direct_i;
@@ -702,7 +637,7 @@ TEST(ModernAPI, CellsRowCol) {
 
   const int rows = map.getSize()(0);
   size_t count = 0;
-  for (auto cell : map.cells()) {
+  for (auto cell : map) {
     // Default startIndex (0,0): logical == physical
     int expectedRow = static_cast<int>(cell.index % rows);
     int expectedCol = static_cast<int>(cell.index / rows);
@@ -725,7 +660,7 @@ TEST(ModernAPI, CellsRowColAfterMove) {
   const int rows = map.getSize()(0);
   const int cols = map.getSize()(1);
 
-  for (auto cell : map.cells()) {
+  for (auto cell : map) {
     // Forward transform: logical -> physical (same as MapIndexer)
     int bufRow = cell.row + startIdx(0);
     if (bufRow >= rows) bufRow -= rows;
@@ -746,7 +681,7 @@ TEST(ModernAPI, CellsLinearAccess) {
   data.setConstant(0.0f);
 
   // cell.index provides linear access to Eigen matrix
-  for (auto cell : map.cells()) {
+  for (auto cell : map) {
     data(cell.index) = 1.0f;
   }
 
@@ -765,7 +700,7 @@ TEST(SpatialIteration, RectBasic) {
   map["layer"].setConstant(0.0f);
 
   size_t count = 0;
-  for (auto cell : map.rect(Position(0.0, 0.0), Length(4.0, 4.0))) {
+  for (auto cell : map.region(Position(0.0, 0.0), Length(4.0, 4.0))) {
     EXPECT_GE(cell.row, 0);
     EXPECT_LT(cell.row, map.getSize()(0));
     EXPECT_GE(cell.col, 0);
@@ -783,7 +718,7 @@ TEST(SpatialIteration, RectAfterMove) {
   map.move(Position(-3.0, -2.0));
 
   size_t count = 0;
-  for (auto cell : map.rect(Position(-3.0, -2.0), Length(4.0, 4.0))) {
+  for (auto cell : map.region(Position(-3.0, -2.0), Length(4.0, 4.0))) {
     EXPECT_GE(cell.index, 0);
     EXPECT_LT(cell.index, static_cast<Eigen::Index>(map.getSize().prod()));
     map["layer"](cell.index) = 2.0f;
@@ -830,10 +765,10 @@ TEST(SpatialIteration, NeighborsCircle) {
   map.setGeometry(Length(10.1, 10.1), 1.0, Position(0.0, 0.0));
   map["layer"].setConstant(0.0f);
 
-  auto reg = map.region(2.0);
+  auto reg = map.kernel(2.0);
 
   // Pick center cell (5, 5) — interior cell
-  GridMap::Cell center{0, 5, 5};
+  GridMap::Cell center{0, 5, 5, 5, 5};
   int physRow = (5 + map.getStartIndex()(0)) % map.getSize()(0);
   int physCol = (5 + map.getStartIndex()(1)) % map.getSize()(1);
   center.index =
@@ -854,10 +789,10 @@ TEST(SpatialIteration, NeighborsRect) {
   GridMap map({"layer"});
   map.setGeometry(Length(10.1, 10.1), 1.0, Position(0.0, 0.0));
 
-  auto reg = map.region(Size(3, 3));
+  auto reg = map.kernel(Size(3, 3));
 
   // Pick center cell (5, 5) — interior cell
-  GridMap::Cell center{0, 5, 5};
+  GridMap::Cell center{0, 5, 5, 5, 5};
   int physRow = (5 + map.getStartIndex()(0)) % map.getSize()(0);
   int physCol = (5 + map.getStartIndex()(1)) % map.getSize()(1);
   center.index =
@@ -879,7 +814,7 @@ TEST(SpatialIteration, RectOutside) {
   map.setGeometry(Length(5.0, 5.0), 1.0, Position(0.0, 0.0));
 
   size_t count = 0;
-  for (auto cell : map.rect(Position(100.0, 100.0), Length(1.0, 1.0))) {
+  for (auto cell : map.region(Position(100.0, 100.0), Length(1.0, 1.0))) {
     ++count;
     (void)cell;
   }
@@ -890,10 +825,10 @@ TEST(SpatialIteration, NeighborsAtBorder) {
   GridMap map({"layer"});
   map.setGeometry(Length(5.1, 5.1), 1.0, Position(0.0, 0.0));
 
-  auto reg = map.region(1.5);
+  auto reg = map.kernel(1.5);
 
   // Cell at corner (0, 0)
-  GridMap::Cell corner{0, 0, 0};
+  GridMap::Cell corner{0, 0, 0, 0, 0};
   int physRow = (0 + map.getStartIndex()(0)) % map.getSize()(0);
   int physCol = (0 + map.getStartIndex()(1)) % map.getSize()(1);
   corner.index =

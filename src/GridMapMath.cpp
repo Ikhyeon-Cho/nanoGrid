@@ -6,7 +6,7 @@
  *	 Institute: ETH Zurich, ANYbotics
  */
 
-#include "nanogrid/GridMapMath.hpp"
+#include "nanogrid/detail/GridMapMath.hpp"
 
 #include <cmath>
 #include <cstring>
@@ -169,15 +169,6 @@ bool checkIfPositionWithinMap(const Position& position,
       && positionTransformed.x() < mapLength(0) && positionTransformed.y() < mapLength(1);
 }
 
-void getPositionOfDataStructureOrigin(const Position& position,
-                                      const Length& mapLength,
-                                      Position& positionOfOrigin)
-{
-  Vector vectorToOrigin;
-  getVectorToOrigin(vectorToOrigin, mapLength);
-  positionOfOrigin = position + vectorToOrigin;
-}
-
 bool getIndexShiftFromPositionShift(Index& indexShift,
                                     const Vector& positionShift,
                                     const double& resolution)
@@ -275,11 +266,6 @@ void boundPositionToRange(Position& position, const Length& mapLength, const Pos
   }
 
   position = positionShifted + mapPosition - vectorToOrigin;
-}
-
-Eigen::Matrix2i getBufferOrderToMapFrameAlignment()
-{
-  return getBufferOrderToMapFrameTransformation().array().abs().matrix();
 }
 
 bool getSubmapInformation(Index& submapTopLeftIndex,
@@ -456,63 +442,6 @@ bool getBufferRegionsForSubmap(std::vector<BufferRegion>& submapBufferRegions,
   return false;
 }
 
-bool incrementIndex(Index& index, const Size& bufferSize, const Index& bufferStartIndex)
-{
-  Index unwrappedIndex = getIndexFromBufferIndex(index, bufferSize, bufferStartIndex);
-
-  // Increment index.
-  if (unwrappedIndex(1) + 1 < bufferSize(1)) {
-    // Same row.
-    unwrappedIndex[1]++;
-  } else {
-    // Next row.
-    unwrappedIndex[0]++;
-    unwrappedIndex[1] = 0;
-  }
-
-  // End of iterations reached.
-  if (!checkIfIndexInRange(unwrappedIndex, bufferSize)) {
-    return false;
-  }
-
-  // Return true iterated index.
-  index = getBufferIndexFromIndex(unwrappedIndex, bufferSize, bufferStartIndex);
-  return true;
-}
-
-bool incrementIndexForSubmap(Index& submapIndex, Index& index, const Index& submapTopLeftIndex,
-                             const Size& submapBufferSize, const Size& bufferSize,
-                             const Index& bufferStartIndex)
-{
-  // Copy the data first, only copy it back if everything is within range.
-  Index tempIndex = index;
-  Index tempSubmapIndex = submapIndex;
-
-  // Increment submap index.
-  if (tempSubmapIndex[1] + 1 < submapBufferSize[1]) {
-    // Same row.
-    tempSubmapIndex[1]++;
-  } else {
-    // Next row.
-    tempSubmapIndex[0]++;
-    tempSubmapIndex[1] = 0;
-  }
-
-  // End of iterations reached.
-  if (!checkIfIndexInRange(tempSubmapIndex, submapBufferSize)) {
-    return false;
-  }
-
-  // Get corresponding index in map.
-  Index unwrappedSubmapTopLeftIndex = getIndexFromBufferIndex(submapTopLeftIndex, bufferSize, bufferStartIndex);
-  tempIndex = getBufferIndexFromIndex(unwrappedSubmapTopLeftIndex + tempSubmapIndex, bufferSize, bufferStartIndex);
-
-  // Copy data back.
-  index = tempIndex;
-  submapIndex = tempSubmapIndex;
-  return true;
-}
-
 Index getIndexFromBufferIndex(const Index& bufferIndex, const Size& bufferSize, const Index& bufferStartIndex)
 {
   if (checkIfStartIndexAtDefaultPosition(bufferStartIndex)) {
@@ -549,48 +478,6 @@ Index getIndexFromLinearIndex(const size_t linearIndex, const Size& bufferSize, 
     return Index((int)linearIndex % bufferSize(0), (int)linearIndex / bufferSize(0));
   }
   return Index((int)linearIndex / bufferSize(1), (int)linearIndex % bufferSize(1));
-}
-
-bool colorValueToVector(const unsigned long& colorValue, Eigen::Vector3i& colorVector)
-{
-  colorVector(0) = (colorValue >> 16) & 0x0000ff;
-  colorVector(1) = (colorValue >> 8) & 0x0000ff;
-  colorVector(2) =  colorValue & 0x0000ff;
-  return true;
-}
-
-bool colorValueToVector(const unsigned long& colorValue, Eigen::Vector3f& colorVector)
-{
-  Eigen::Vector3i tempColorVector;
-  colorValueToVector(colorValue, tempColorVector);
-  colorVector = ((tempColorVector.cast<float>()).array() / 255.0).matrix();
-  return true;
-}
-
-bool colorValueToVector(const float& colorValue, Eigen::Vector3f& colorVector)
-{
-  unsigned long tempColorValue = 0;
-  std::memcpy(&tempColorValue, &colorValue, sizeof(float));
-  colorValueToVector(tempColorValue, colorVector);
-  return true;
-}
-
-bool colorVectorToValue(const Eigen::Vector3i& colorVector, unsigned long& colorValue)
-{
-  colorValue = ((int)colorVector(0)) << 16 | ((int)colorVector(1)) << 8 | ((int)colorVector(2));
-  return true;
-}
-
-void colorVectorToValue(const Eigen::Vector3i& colorVector, float& colorValue)
-{
-  unsigned long longColor = (colorVector(0) << 16) + (colorVector(1) << 8) + colorVector(2);
-  std::memcpy(&colorValue, &longColor, sizeof(float));
-}
-
-void colorVectorToValue(const Eigen::Vector3f& colorVector, float& colorValue)
-{
-  Eigen::Vector3i tempColorVector = (colorVector * 255.0).cast<int>();
-  colorVectorToValue(tempColorVector, colorValue);
 }
 
 }  // namespace nanogrid
