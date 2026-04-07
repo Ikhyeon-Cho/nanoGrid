@@ -11,6 +11,7 @@ add_executable(nanogrid_tests
   GridMapTest.cpp
   GridMapMathTest.cpp
   EigenPluginsTest.cpp
+  ModernApiTest.cpp
   test_helpers.cpp
 )
 
