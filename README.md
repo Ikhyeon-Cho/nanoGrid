@@ -13,33 +13,50 @@
 
 nanoGrid is a C++17 library for 2.5D multi-layer grid maps. Each layer — elevation, surface normals, traversability, or any per-cell data — is stored as a named Eigen float matrix on a fixed-resolution grid. It adds a modernized API and faster iteration on top of the original.
 
-This library is based on [grid_map](https://github.com/ANYbotics/grid_map) by Péter Fankhauser (ETH Zurich / ANYbotics). Following the original license terms, nanoGrid is distributed under the BSD-3-Clause license. It uses the `nanogrid::` namespace and coexists with ROS `grid_map` side by side.
-
 → [Quick Start](#quick-start)
-
----
 
 ## Why nanoGrid?
 
 nanoGrid takes `grid_map`'s core and makes it standalone, modernized, and faster:
 
 - **Standalone** — Pure CMake. Add it with `FetchContent` in 3 lines.
-- **Modern API** — Idiomatic C++17 value-returning patterns.
+- **Modern API** — Less code, fewer mistakes.
 - **Faster map iteration** — Range-based for loop at raw Eigen speed.
-
-  <details>
-  <summary>Benchmark: 5000×5000 grid (25M cells, Release build)</summary>
 
   | Method | Time | vs Baseline |
   |--------|------|-------------|
   | **Eigen** bulk operation (SIMD-optimized) | 8.2 ms | **1.0x** |
-  | **nanoGrid `map.cells()`** | **8.3 ms** | **1.0x** |
-  | **nanoGrid `map.cells()`** + grid coordinates | **22.7 ms** | **2.8x** |
+  | **nanoGrid `for (auto cell : map)`** | **8.3 ms** | **1.0x** |
+  | **nanoGrid `for (auto cell : map)`** + grid coordinates | **22.7 ms** | **2.8x** |
   | **grid_map** `GridMapIterator` + `getLinearIndex()` | 83.7 ms | 10.3x |
   | **grid_map** `GridMapIterator` + `operator*()` | 192 ms | 23.5x |
   | **grid_map** `GridMapIterator` + `map.at()` | 614 ms | 75.2x |
 
-  </details>
+  *5000×5000 grid (25M cells), Release build*
+
+## Minimal Example
+
+Create a grid, write cells, and read back by world position:
+
+```cpp
+#include <nanogrid/nanogrid.hpp>
+using namespace nanogrid;
+
+GridMap map;
+map.setGeometry(Length(20.0, 20.0), 0.1);  // 20×20m, 0.1m resolution
+map.add("elevation");
+
+// Write — direct Eigen matrix access
+auto& elevation = map["elevation"];
+for (auto cell : map) {
+    elevation(cell.index) = 42.0f;
+}
+
+// Read — query by world position
+if (auto val = map.get("elevation", Position(1.0, 2.0))) {
+    // *val is 42.0f
+}
+```
 
 ---
 
@@ -56,25 +73,19 @@ cmake --install build  # optional
 ```
 
 <details>
-<summary>To use nanoGrid in your project</summary>
+<summary>To use nanoGrid in your project:</summary>
 <br>
 
-Link against `nanoGrid::nanoGrid`:
-
 ```cmake
-find_package(nanoGrid REQUIRED)
-target_link_libraries(your_target PUBLIC nanoGrid::nanoGrid)
-```
-
-Or fetch it directly:
-
-```cmake
-include(FetchContent)
-FetchContent_Declare(nanoGrid
-  GIT_REPOSITORY https://github.com/Ikhyeon-Cho/nanoGrid.git
-  GIT_TAG main
-)
-FetchContent_MakeAvailable(nanoGrid)
+find_package(nanoGrid QUIET)
+if(NOT nanoGrid_FOUND)
+  include(FetchContent)
+  FetchContent_Declare(nanoGrid
+    GIT_REPOSITORY https://github.com/Ikhyeon-Cho/nanoGrid.git
+    GIT_TAG main
+  )
+  FetchContent_MakeAvailable(nanoGrid)
+endif()
 target_link_libraries(your_target PUBLIC nanoGrid::nanoGrid)
 ```
 
@@ -84,7 +95,7 @@ target_link_libraries(your_target PUBLIC nanoGrid::nanoGrid)
 <summary>Using with ROS?</summary>
 <br>
 
-nanoGrid itself has zero ROS dependency. Optional header-only bridges provide `grid_map_msgs` conversion — just include one header in your ROS project:
+Just include one header — no extra dependency required:
 
 ```cpp
 #include <nanogrid/bridge/ros2.hpp>  // or ros1.hpp
@@ -95,76 +106,55 @@ auto msg = nanogrid::ros2::toMsg(map, {"elevation"}); // selective layers
 auto marker = nanogrid::ros2::toBoundaryMarker(map);  // boundary marker
 ```
 
-The bridge headers compile only when your project already depends on `grid_map_msgs`, `std_msgs`, and `visualization_msgs`.
-
 </details>
 
-### Minimal Example
+## API Overview
 
-Create a 20×20 m grid at 0.1 m resolution, add an elevation layer, write cells, and read back by world position:
+See [`GridMap.hpp`](include/nanogrid/GridMap.hpp) for the full API.
+
+**Value access — safe reads with `std::optional`:**
 
 ```cpp
-#include <nanogrid/nanogrid.hpp>
-using namespace nanogrid;
+if (auto val = map.get("elevation", pos)) { /* use *val */ }
+if (auto idx = map.index(pos))            { /* use *idx */ }
+if (auto pos = map.position(idx))         { /* use *pos */ }
+if (auto sub = map.submap(pos, length))   { /* use *sub */ }
+```
 
-GridMap map;
-map.setGeometry(Length(20.0, 20.0), 0.1);  // 20×20m, 0.1m resolution
-map.add("elevation");
+**Iterating all cells:**
 
-// Write — direct Eigen matrix access
+```cpp
 auto& elevation = map["elevation"];
-for (auto cell : map.cells()) {
-    elevation(cell.index) = 42.0f;
-}
-
-// Read — query by world position
-if (auto val = map.get("elevation", Position(1.0, 2.0))) {
-    // *val is 42.0f
+for (auto cell : map) {
+    elevation(cell.index) = 0.0f;       // linear index — Eigen speed
+    if (cell.row == 0 || cell.col == 0)  // logical grid coordinates
+        elevation(cell.index) = -1.0f;
 }
 ```
 
----
-
-## API Compatibility
-
-The full `grid_map` API is retained — just swap `grid_map::` to `nanogrid::`. On top of that, nanoGrid adds modern C++17 alternatives. See [`GridMap.hpp`](include/nanogrid/GridMap.hpp) for the full API.
-
-**Reading a cell by position:**
+**Spatial queries — rectangular and circular regions:**
 
 ```cpp
-// Classic: out-parameter + bool check
-Index idx;
-if (map.getIndex(pos, idx)) {
-    if (map.isValid(idx, "elevation")) {
-        float val = map.at("elevation", idx);
-    }
+for (auto cell : map.region(center, Length(5.0, 5.0))) {
+    // cells within a rectangular area
 }
 
-// Modern: single call
-if (auto val = map.get("elevation", pos)) {
-    // use *val
+for (auto cell : map.circle(center, 3.0)) {
+    // cells within radius 3.0m
 }
 ```
 
-**Iterating over all cells:**
+**Per-cell filtering — apply a kernel to every cell:**
 
 ```cpp
-// Classic: verbose iterator
-for (GridMapIterator it(map); !it.isPastEnd(); ++it) {
-    const size_t i = it.getLinearIndex();
-    elevation(i) = ...;
-}
-
-// Modern: range-based for with spatial info
-for (auto cell : map.cells()) {
-    elevation(cell.index) = 0.0f;
-    if (cell.row == 0 || cell.col == 0) {
-        elevation(cell.index) = -1.0f;  // mark borders
+auto k = map.kernel(1.5);  // circular neighborhood, radius 1.5m
+for (auto cell : map) {
+    for (auto nbr : map.neighbors(cell, k)) {
+        float d = nbr.dist_sq;  // squared distance to center
+        // nbr.index, nbr.row, nbr.col available
     }
 }
 ```
-
----
 
 ## Acknowledgments
 
