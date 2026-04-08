@@ -4,12 +4,17 @@
  *  Created on: Jul 14, 2014
  *      Author: Péter Fankhauser
  *	 Institute: ETH Zurich, ANYbotics
+ *
+ *  Modified on: Jan, 2026
+ *      Author: Ikhyeon Cho
+ *  Institute: Korea University, Seoul
  */
 
 #pragma once
 
-#include "nanogrid/detail/BufferRegion.hpp"
 #include "nanogrid/TypeDefs.hpp"
+
+namespace nanogrid { class BufferRegion; }
 
 // STL
 #include <cmath>
@@ -540,6 +545,8 @@ class GridMap {
   };
 
   /// Iterate cells within a rectangular world-coordinate region.
+  /// @param center world-frame position of the region center [m].
+  /// @param size side lengths of the region in x and y [m].
   RegionRange region(const Position& center, const Length& size) const;
 
   // ---------------------------------------------------------------------------
@@ -588,6 +595,8 @@ class GridMap {
   };
 
   /// Iterate cells within a circular world-coordinate region.
+  /// @param center world-frame position of the circle center [m].
+  /// @param radius circle radius [m].
   CircleRange circle(const Position& center, double radius) const;
 
   // ---------------------------------------------------------------------------
@@ -605,10 +614,12 @@ class GridMap {
     int minDr = 0, maxDr = 0, minDc = 0, maxDc = 0;
   };
 
-  /// Precompute a circular neighborhood (radius in meters).
+  /// Precompute a circular neighborhood kernel.
+  /// @param radius neighborhood radius [m].
   Kernel kernel(double radius) const;
 
-  /// Precompute a rectangular neighborhood (window size in cells).
+  /// Precompute a rectangular neighborhood kernel.
+  /// @param window neighborhood size in cells (rows, cols).
   Kernel kernel(const Size& window) const;
 
   // ---------------------------------------------------------------------------
@@ -678,6 +689,7 @@ class GridMap {
   };
 
   /// Iterate neighbors of a cell using a precomputed Kernel.
+  /// Build a Kernel once with kernel(), then reuse it for every cell.
   NeighborRange neighbors(const Cell& cell, const Kernel& nbr) const;
 
  private:

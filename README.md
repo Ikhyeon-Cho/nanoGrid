@@ -8,10 +8,11 @@
 ![Linux](https://img.shields.io/badge/Linux-555555?style=flat&logo=linux&logoColor=white)
 ![macOS](https://img.shields.io/badge/macOS-555555?style=flat&logo=apple&logoColor=white)
 ![Windows](https://img.shields.io/badge/Windows-555555?style=flat&logo=windows&logoColor=white)
+[![CI](https://github.com/Ikhyeon-Cho/nanoGrid/actions/workflows/ci.yml/badge.svg)](https://github.com/Ikhyeon-Cho/nanoGrid/actions/workflows/ci.yml)
 
-> Multi-layer grid maps for any C++ project. Eigen-only. Plain CMake.
+> Multi-layer grid maps for any C++ project.
 
-nanoGrid is a C++17 library for 2.5D multi-layer grid maps. Each layer — elevation, surface normals, traversability, or any per-cell data — is stored as a named Eigen float matrix on a fixed-resolution grid. It adds a modernized API and faster iteration on top of the original.
+nanoGrid is a C++17 library for multi-layer 2.5D grid maps. Each layer — elevation, surface normals, traversability, or any per-cell data — is stored as a named Eigen float matrix on a fixed-resolution grid. It adds a modernized API and faster iteration on top of the [grid_map](https://github.com/ANYbotics/grid_map).
 
 → [Quick Start](#quick-start)
 
@@ -19,9 +20,10 @@ nanoGrid is a C++17 library for 2.5D multi-layer grid maps. Each layer — eleva
 
 nanoGrid takes `grid_map`'s core and makes it standalone, modernized, and faster:
 
-- **Standalone** — Pure CMake. Add it with `FetchContent` in 3 lines.
+- **Compact** — Eigen-only dependency.
+- **Standalone** — Pure CMake, no ROS. Just add it with `FetchContent` in 3 lines.
 - **Modern API** — Less code, fewer mistakes.
-- **Faster map iteration** — Range-based for loop at raw Eigen speed.
+- **Faster performance** — Range-based for loop at raw Eigen speed.
 
   | Method | Time | vs Baseline |
   |--------|------|-------------|
@@ -73,7 +75,7 @@ cmake --install build  # optional
 ```
 
 <details>
-<summary>To use nanoGrid in your project:</summary>
+<summary>Using nanoGrid in your project?</summary>
 <br>
 
 ```cmake
@@ -95,7 +97,7 @@ target_link_libraries(your_target PUBLIC nanoGrid::nanoGrid)
 <summary>Using with ROS?</summary>
 <br>
 
-Just include one header — no extra dependency required:
+Just include a single header: `nanogrid/bridge/ros2.hpp`
 
 ```cpp
 #include <nanogrid/bridge/ros2.hpp>  // or ros1.hpp
